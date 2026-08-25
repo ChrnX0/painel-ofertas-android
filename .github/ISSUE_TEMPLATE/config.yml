@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 🚦 Primeiro contato com o código
+    url: https://github.com/ChrnX0/painel-ofertas-android/blob/main/docs/COMECE-AQUI.md
+    about: Onboarding, glossário do domínio e as armadilhas do projeto.
+  - name: 🍳 "Como faço X?"
+    url: https://github.com/ChrnX0/painel-ofertas-android/blob/main/docs/RECEITAS.md
+    about: 12 tarefas passo a passo, incluindo depuração de envio e de descoberta.
+  - name: 📡 Dúvida sobre o protocolo
+    url: https://github.com/ChrnX0/painel-ofertas-android/blob/main/docs/PROTOCOLO.md
+    about: Especificação completa — bytes, comandos, CRC, USB e ESP-AT.

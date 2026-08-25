@@ -1,0 +1,46 @@
+TODOS OS DIREITOS RESERVADOS
+
+Copyright (c) 2026 Paulo Eduardo — porte Android
+Copyright (c) LedBlock Indicadores Inteligentes — produto, marca e protocolo
+
+
+AVISO
+
+"Painel de Ofertas" é um produto da LedBlock Indicadores Inteligentes
+(https://www.ledblock.com.br). A marca, o logotipo, o hardware e o protocolo de
+comunicação do painel pertencem à LedBlock.
+
+Este repositório contém um porte para Android, desenvolvido de forma independente
+a partir do software Windows original, com o objetivo de ser entregue à LedBlock.
+Não é um produto oficial da empresa e não existe vínculo comercial entre o autor
+do porte e a LedBlock.
+
+
+CONDIÇÕES DE USO
+
+O código-fonte é disponibilizado publicamente para consulta, avaliação técnica e
+para uso da LedBlock Indicadores Inteligentes.
+
+Nenhuma licença de código aberto é concedida. Salvo autorização por escrito dos
+detentores dos direitos, não é permitido:
+
+  - usar este software, no todo ou em parte, para fins comerciais;
+  - redistribuir, sublicenciar ou vender cópias;
+  - criar e distribuir trabalhos derivados;
+  - utilizar a marca ou o logotipo da LedBlock.
+
+O uso da marca "LedBlock" e do logotipo neste repositório se dá exclusivamente
+para identificar o produto ao qual o aplicativo se destina.
+
+
+ISENÇÃO DE GARANTIA
+
+ESTE SOFTWARE É FORNECIDO "COMO ESTÁ", SEM GARANTIA DE QUALQUER NATUREZA, EXPRESSA
+OU IMPLÍCITA, INCLUINDO MAS NÃO SE LIMITANDO ÀS GARANTIAS DE COMERCIALIZAÇÃO,
+ADEQUAÇÃO A UMA FINALIDADE ESPECÍFICA E NÃO VIOLAÇÃO.
+
+EM NENHUMA HIPÓTESE OS AUTORES SERÃO RESPONSÁVEIS POR QUALQUER REIVINDICAÇÃO,
+DANO OU OUTRA RESPONSABILIDADE DECORRENTE DO USO DESTE SOFTWARE.
+
+Atenção: este aplicativo controla equipamentos físicos e ainda não foi validado
+contra um painel real. Consulte HANDOFF.md antes de utilizá-lo em produção.

@@ -1,0 +1,70 @@
+name: Release
+
+# Publica uma Release com o APK sempre que uma tag "v*" for criada.
+# Uso:  git tag v0.24.0 && git push origin v0.24.0
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build e publicação
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Permissão do gradlew
+        run: chmod +x ./gradlew
+
+      - name: Testes de unidade
+        run: ./gradlew test --no-daemon
+
+      - name: Build do APK
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Renomear o APK com a versão
+        run: |
+          VERSAO="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk "dist/PainelOfertas-${VERSAO}.apk"
+          ls -lh dist/
+
+      - name: Publicar a Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.apk
+          generate_release_notes: true
+          body: |
+            ## Instalação
+
+            Baixe o `.apk` abaixo e instale no aparelho Android.
+            Como não vem da Play Store, é preciso permitir **"Instalar apps de
+            fontes desconhecidas"** para o aplicativo de onde você abrir o arquivo.
+
+            Requisitos: **Android 7.0+** · para o caminho USB, o aparelho precisa
+            suportar **USB OTG**.
+
+            > ⚠️ Este app ainda **não foi validado contra um painel físico**.
+            > Antes de usar em produção, veja o roteiro de validação em
+            > [HANDOFF.md](https://github.com/ChrnX0/painel-ofertas-android/blob/main/HANDOFF.md).
+
+            ---
+
+            📋 Mudanças desta versão: [CHANGELOG.md](https://github.com/ChrnX0/painel-ofertas-android/blob/main/CHANGELOG.md)
+            🚦 Primeiro contato com o código: [docs/COMECE-AQUI.md](https://github.com/ChrnX0/painel-ofertas-android/blob/main/docs/COMECE-AQUI.md)

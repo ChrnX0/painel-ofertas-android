@@ -1,0 +1,36 @@
+name: "💡 Melhoria"
+description: Sugerir um recurso ou mudança
+labels: ["melhoria"]
+body:
+  - type: textarea
+    id: problema
+    attributes:
+      label: Que problema isso resolve?
+      description: Descreva a situação real, não a solução.
+      placeholder: |
+        Quem tem 8 painéis precisa mandar a mesma oferta para todos,
+        um por um — leva vários minutos.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposta
+    attributes:
+      label: O que você propõe
+      placeholder: "Poder selecionar vários painéis e enviar de uma vez."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: firmware
+    attributes:
+      label: Isso depende do firmware do painel?
+      description: |
+        Recursos como rotação real da imagem, novos efeitos ou cor dependem do
+        controlador — o app só usa comandos que o firmware já implementa.
+        Veja docs/DECISOES.md §12.
+      options:
+        - "Não — é só do app"
+        - "Sim / não tenho certeza"
+    validations:
+      required: true

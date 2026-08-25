@@ -16,6 +16,7 @@ Monte preços e mensagens no celular e envie ao painel por **Wi-Fi** ou **cabo U
 [![Testes](https://img.shields.io/badge/testes-~33_verdes-2E7D32?logo=junit5&logoColor=white)](#-testes)
 [![Protocolo](https://img.shields.io/badge/protocolo-validado_byte_a_byte-1E88E5)](#-protocolo)
 [![Status](https://img.shields.io/badge/hardware-valida%C3%A7%C3%A3o_pendente-FB8C00)](#%EF%B8%8F-status-do-projeto)
+[![Licença](https://img.shields.io/badge/licen%C3%A7a-todos_os_direitos_reservados-6E7681)](LICENSE)
 
 </div>
 
@@ -62,7 +63,45 @@ A **especificação completa**: formato, bytes, comandos, CRC, USB, ESP-AT e vet
 </tr>
 </table>
 
-E para validar contra um painel real: **[HANDOFF.md](HANDOFF.md)** — roteiro de 10 passos.
+<table>
+<tr>
+<td width="25%" align="center">
+
+### 🧭
+**[Decisões](docs/DECISOES.md)**
+
+**"Por que é assim?"** — 13 decisões com contexto, motivo e quando revisar
+
+</td>
+<td width="25%" align="center">
+
+### ❓
+**[FAQ](docs/FAQ.md)**
+
+Perguntas frequentes sobre o app, o painel e o projeto
+
+</td>
+<td width="25%" align="center">
+
+### ✅
+**[Handoff](HANDOFF.md)**
+
+Roteiro de **10 passos** para validar contra um painel real
+
+</td>
+<td width="25%" align="center">
+
+### 📋
+**[Changelog](CHANGELOG.md)**
+
+Histórico de todas as versões
+
+</td>
+</tr>
+</table>
+
+Vai contribuir? **[CONTRIBUTING.md](CONTRIBUTING.md)** — com a regra que mais importa:
+*mudou `protocol/`, o teste compara bytes.*
 
 ---
 
@@ -506,12 +545,14 @@ passos** para conferir em bancada, além de perguntas técnicas sobre o firmware
 
 ## 🤝 Contribuindo
 
-Issues e PRs são bem-vindos. Antes de abrir um PR:
+Guia completo em **[CONTRIBUTING.md](CONTRIBUTING.md)**. O essencial:
 
 1. `./gradlew test` deve passar
-2. Mudanças no `protocol/` precisam de **teste que compare bytes** — é o núcleo que
+2. Mudança no `protocol/` precisa de **teste que compare bytes** — é o núcleo que
    garante compatibilidade com o app Windows
 3. Descreva no PR o que foi testado **em hardware real**, se aplicável
+4. Antes de "consertar" algo estranho, veja [as decisões](docs/DECISOES.md) — quase
+   sempre é fidelidade proposital ao protocolo
 
 ---
 
@@ -525,6 +566,9 @@ Este repositório contém um **porte Android desenvolvido de forma independente*
 partir do software Windows original, com o objetivo de ser entregue à LedBlock. Não
 é um produto oficial da empresa e não há vínculo comercial. Todos os direitos sobre
 a marca e o produto permanecem com a LedBlock.
+
+📄 Condições de uso: **[LICENSE](LICENSE)** — código público para consulta e
+avaliação técnica; **nenhuma licença de código aberto é concedida**.
 
 <div align="center">
 <br>

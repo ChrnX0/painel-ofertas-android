@@ -1,0 +1,78 @@
+name: "🐛 Problema"
+description: Algo não funciona como deveria
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Antes de abrir: a tabela **[sintoma → causa → solução](../blob/main/docs/RECEITAS.md#11-depurar-o-envio-falha)**
+        resolve a maior parte dos problemas de envio e de painel que não aparece.
+
+  - type: textarea
+    id: oque
+    attributes:
+      label: O que aconteceu
+      description: E o que você esperava que acontecesse.
+      placeholder: |
+        Enviei um álbum pelo Wi-Fi e a barra travou em 40%.
+        Esperava que chegasse a 100% e o painel trocasse o conteúdo.
+    validations:
+      required: true
+
+  - type: textarea
+    id: passos
+    attributes:
+      label: Como reproduzir
+      placeholder: |
+        1. Aba Editar → criar oferta com valor 990
+        2. Salvar e enviar
+        3. Escolher o painel 192.168.0.42
+        4. Tocar em Enviar
+    validations:
+      required: true
+
+  - type: dropdown
+    id: conexao
+    attributes:
+      label: Como estava conectado
+      options:
+        - Wi-Fi (rede)
+        - USB (cabo OTG)
+        - Não se aplica
+    validations:
+      required: true
+
+  - type: dropdown
+    id: hardware
+    attributes:
+      label: Havia um painel real envolvido?
+      description: Isso muda completamente o diagnóstico — o app ainda não foi validado em hardware.
+      options:
+        - "Sim, painel físico"
+        - "Não, só o app"
+    validations:
+      required: true
+
+  - type: input
+    id: versao
+    attributes:
+      label: Versão do app
+      description: Veja em Config → Sobre
+      placeholder: "0.24.0"
+    validations:
+      required: true
+
+  - type: input
+    id: aparelho
+    attributes:
+      label: Aparelho e versão do Android
+      placeholder: "Galaxy S25+ · Android 16"
+    validations:
+      required: true
+
+  - type: textarea
+    id: status
+    attributes:
+      label: Mensagem de status exibida
+      description: O texto que aparece na tela (ex.= "Falha no bloco 240")
+      render: text
