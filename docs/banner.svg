@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 380" width="1200" height="380" role="img" aria-label="Painel de Ofertas — porte Android">
+  <defs>
+    <!-- moldura do equipamento -->
+    <linearGradient id="bezel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#2A2F38"/>
+      <stop offset="45%"  stop-color="#141821"/>
+      <stop offset="100%" stop-color="#1E232C"/>
+    </linearGradient>
+
+    <!-- grade de LEDs: um ponto por célula -->
+    <pattern id="grid" width="8" height="8" patternUnits="userSpaceOnUse">
+      <circle cx="4" cy="4" r="2.6" fill="#FFB020"/>
+    </pattern>
+    <pattern id="gridOff" width="8" height="8" patternUnits="userSpaceOnUse">
+      <circle cx="4" cy="4" r="1.7" fill="#FFFFFF" fill-opacity="0.055"/>
+    </pattern>
+
+    <!-- brilho dos LEDs acesos -->
+    <filter id="glow" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- máscara: o texto vira o recorte por onde a grade acende -->
+    <mask id="txt">
+      <rect width="1200" height="380" fill="black"/>
+      <g fill="white" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="700" text-anchor="middle">
+        <text x="600" y="132" font-size="52" letter-spacing="10">PAINEL DE OFERTAS</text>
+        <text x="497" y="268" font-size="132" letter-spacing="2">R$ 9</text>
+        <text x="700" y="228" font-size="66">,90</text>
+      </g>
+      <rect x="352" y="292" width="420" height="9" fill="white"/>
+      <g fill="white" font-family="'DejaVu Sans','Verdana',sans-serif" font-weight="700" text-anchor="middle">
+        <text x="600" y="342" font-size="26" letter-spacing="8">O KILO</text>
+      </g>
+    </mask>
+  </defs>
+
+  <!-- moldura + parafusos -->
+  <rect width="1200" height="380" rx="26" fill="url(#bezel)"/>
+  <g fill="#11151B">
+    <circle cx="22" cy="22" r="5"/><circle cx="1178" cy="22" r="5"/>
+    <circle cx="22" cy="358" r="5"/><circle cx="1178" cy="358" r="5"/>
+  </g>
+
+  <!-- placa preta -->
+  <rect x="16" y="16" width="1168" height="348" rx="14" fill="#05070B"/>
+
+  <!-- LEDs apagados (matriz visível) -->
+  <rect x="16" y="16" width="1168" height="348" rx="14" fill="url(#gridOff)"/>
+
+  <!-- LEDs acesos: a grade âmbar recortada pelo texto -->
+  <g mask="url(#txt)" filter="url(#glow)">
+    <rect x="16" y="16" width="1168" height="348" fill="url(#grid)"/>
+  </g>
+
+  <!-- etiqueta do fabricante -->
+  <text x="1150" y="48" text-anchor="end" font-family="'DejaVu Sans Mono',monospace"
+        font-size="13" letter-spacing="5" fill="#5A6472">LEDBLOCK</text>
+</svg>

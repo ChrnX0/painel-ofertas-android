@@ -1,177 +1,481 @@
 <div align="center">
 
+<img src="docs/banner.svg" alt="Painel de Ofertas" width="100%">
+
 # Painel de Ofertas — Android
 
-**Porte Android nativo do software Windows "Painel de Ofertas"**
-Controle de painéis de LED de ofertas/preços por **Wi-Fi** e **USB**.
+**Porte Android nativo do software Windows que controla painéis de LED de ofertas.**
+Monte preços e mensagens no celular e envie ao painel por **Wi-Fi** ou **cabo USB**.
 
-[![Android](https://img.shields.io/badge/Android-7.0%2B%20(API%2024)-3DDC84?logo=android&logoColor=white)](#)
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.0-7F52FF?logo=kotlin&logoColor=white)](#)
-[![Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?logo=jetpackcompose&logoColor=white)](#)
-[![Testes](https://img.shields.io/badge/testes-~33%20verdes-2E7D32)](#testes)
-[![Status](https://img.shields.io/badge/status-aguardando%20valida%C3%A7%C3%A3o%20em%20hardware-FB8C00)](#status-do-projeto)
+<br>
+
+[![Android CI](https://github.com/ChrnX0/painel-ofertas-android/actions/workflows/android.yml/badge.svg)](https://github.com/ChrnX0/painel-ofertas-android/actions/workflows/android.yml)
+[![Android](https://img.shields.io/badge/Android-7.0%2B_(API_24)-3DDC84?logo=android&logoColor=white)](#-começando)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.0-7F52FF?logo=kotlin&logoColor=white)](#-arquitetura)
+[![Compose](https://img.shields.io/badge/Jetpack_Compose-Material_3-4285F4?logo=jetpackcompose&logoColor=white)](#-arquitetura)
+[![Testes](https://img.shields.io/badge/testes-~33_verdes-2E7D32?logo=junit5&logoColor=white)](#-testes)
+[![Protocolo](https://img.shields.io/badge/protocolo-validado_byte_a_byte-1E88E5)](#-protocolo)
+[![Status](https://img.shields.io/badge/hardware-valida%C3%A7%C3%A3o_pendente-FB8C00)](#%EF%B8%8F-status-do-projeto)
 
 </div>
 
 ---
 
-## Sobre
+## 📑 Índice
 
-App Android nativo (Kotlin + Jetpack Compose) que reproduz o software Windows
-"Painel de Ofertas" para controlar **painéis de LED de ofertas/preços** de loja.
-A comunicação acontece por **Wi-Fi/UDP** e por **USB HID** (configuração do módulo
-Wi-Fi ESP-AT através de uma ponte Microchip).
-
-O protocolo foi **extraído do código-fonte Delphi original** e validado
-byte-a-byte contra os arquivos reais do app Windows — o núcleo (codec, CRC,
-fontes bitmap, máquina de transferência) roda coberto por testes automatizados.
-
-**Interoperável:** os álbuns são gravados no mesmo formato `.alb` do app Windows,
-então o conteúdo criado no Android abre no PC e vice-versa.
-
-> ### ⚠️ Status do projeto
-> Este app **ainda não foi testado contra um painel físico**. Tudo foi derivado do
-> código-fonte original e validado com testes de unidade e um painel simulado.
-> O documento **[HANDOFF.md](HANDOFF.md)** traz um **roteiro de validação de 10
-> passos** para conferir em bancada.
+| | | |
+|---|---|---|
+| [🎯 Sobre](#-sobre) | [✨ Funcionalidades](#-funcionalidades) | [💡 Além do original](#-recursos-além-do-app-windows) |
+| [🔌 Hardware](#-como-o-hardware-funciona) | [📡 Protocolo](#-protocolo) | [🏗️ Arquitetura](#️-arquitetura) |
+| [🚀 Começando](#-começando) | [🧪 Testes](#-testes) | [⚠️ Status](#️-status-do-projeto) |
+| [🗺️ Roadmap](#️-roadmap) | [🤝 Contribuindo](#-contribuindo) | [⚖️ Propriedade](#️-propriedade-e-marca) |
 
 ---
 
-## Funcionalidades
+## 🎯 Sobre
 
-| Aba | O que faz |
+Lojas usam **painéis de LED** para anunciar preços — aquele letreiro âmbar com
+"OFERTA · R$ 9,90 · O KILO". Esses painéis são programados por um software
+**Windows** que precisa de um PC ao lado do equipamento.
+
+Este projeto é o **porte Android nativo** desse software: o lojista monta a oferta
+no próprio celular e envia ao painel pela rede Wi-Fi da loja ou por cabo USB.
+
+> **Como foi construído**
+> O protocolo não foi adivinhado — foi **extraído do código-fonte Delphi original**
+> (8.546 linhas) e validado **byte-a-byte** contra os arquivos reais gerados pelo
+> app Windows. O núcleo (codec, CRC, fontes bitmap, máquina de transferência) roda
+> coberto por testes automatizados que comparam a saída com os bytes originais.
+
+**Interoperável:** os álbuns são gravados no mesmo formato `.alb` do app Windows —
+o que você cria no Android abre no PC, e vice-versa.
+
+<table>
+<tr>
+<td width="33%" valign="top">
+
+### 🎨 Editor visual
+Prévia de LED **ao vivo**, no tamanho real do painel, enquanto você digita.
+Modelos prontos por segmento.
+
+</td>
+<td width="33%" valign="top">
+
+### 📶 Dois transportes
+**Wi-Fi/UDP** para o dia a dia e **USB HID** para configurar a rede do painel.
+
+</td>
+<td width="33%" valign="top">
+
+### 🔬 Fiel ao original
+CRC, fontes, layout e transferência reproduzidos e **cobertos por testes**.
+
+</td>
+</tr>
+</table>
+
+---
+
+## ✨ Funcionalidades
+
+<details open>
+<summary><b>📝 Editar</b> — montagem do conteúdo</summary>
+
+- **Álbum com vários quadros**, do tipo **Oferta** (preço) ou **Mensagem** (texto livre)
+- **Prévia de LED ao vivo** — matriz de pontos com brilho real, no tamanho exato do painel (meia tela ou tela cheia)
+- **Modelos rápidos**: Açougue · Hortifruti · Bebidas · Padaria · Frios · Limpeza — preenchem cabeçalho, medida e rodapé num toque
+- **Preço formatado ao vivo** — digita `990`, mostra `R$ 9,90`
+- Opções de preço: centavos **reduzidos** (sobrescritos), **3 casas**, **sem centavos**
+- Campos: cabeçalho, título, subtítulo, valor, medida, auxiliar, rodapé
+- **Sequência**: reordenar, duplicar, excluir (com **desfazer**), tempo por quadro (Auto, 2s … 60s)
+- **Orientação** horizontal/vertical e borda (sem / segmentada / contínua)
+
+</details>
+
+<details>
+<summary><b>📤 Enviar</b> — transmissão para o painel</summary>
+
+- Envio por **Wi-Fi** (IP do painel) ou **USB**
+- **Anel de progresso** com percentual e trava anti-duplo-toque
+- **Barra de memória** — avisa se o álbum **cabe** no painel *antes* de enviar
+- **Receber** — baixa o conteúdo que está no painel e salva como álbum
+- **Senha de transmissão** opcional (payload ofuscado, resposta `NEGADO` se incorreta)
+
+</details>
+
+<details>
+<summary><b>📺 Painéis</b> — gerenciamento do parque</summary>
+
+- **Auto-conexão**: ao abrir, o app varre a sub-rede e os painéis aparecem sozinhos
+- **Status ao vivo**: online · instável · offline (heartbeat)
+- **Brilho** (0–100%) e **auto-brilho por sensor de luz**
+- **Selo de sincronismo**: ✅ Sincronizado / ⚠️ Desatualizado (compara CRC)
+- **Ligar / Desligar / Identificar / Renomear** cada painel
+- **Configurar o Wi-Fi do painel via USB**: lê a config, escaneia redes e entra na rede
+
+</details>
+
+<details>
+<summary><b>📅 Agenda</b> — programação</summary>
+
+- Agenda o envio de um álbum para um painel em **data e hora**
+- Opção **Diariamente** (recorrente) e **brilho por tarefa**
+- ⚠️ Dispara enquanto o app está aberto — ver [Roadmap](#️-roadmap)
+
+</details>
+
+<details>
+<summary><b>⚙️ Config</b> — ajustes e diagnóstico</summary>
+
+- **Tema**: Sistema · Claro · Escuro
+- **Cor do LED na prévia**: âmbar · vermelho · verde · azul · branco
+- **Efeito global**: Padrão · Pisca/Inverte · Pisca/Padrão
+- **Rede**: IP local, DHCP no painel
+- **Segurança**: senha de transmissão
+- **Diagnóstico do dispositivo**: chip, fabricante, série, firmware e MAC
+- **Diagnóstico do protocolo**: compila os arquivos reais no aparelho e confere o CRC
+
+</details>
+
+### 🛡️ Robustez
+
+| Cuidado | Como |
 |---|---|
-| **Editar** | Montador de sequência: um álbum com vários quadros (**Oferta** de preço e/ou **Mensagem** de texto) — reordenar, duplicar, tempo por quadro, borda, orientação. **Prévia de LED ao vivo** no tamanho real do painel. **Modelos** prontos (Açougue, Hortifruti, Bebidas…) e leitura do preço formatado enquanto digita. |
-| **Enviar** | Envia o álbum por Wi-Fi (IP) ou USB com **anel de progresso** e trava anti-duplo-toque; **barra de memória** avisa se o conteúdo cabe no painel antes de mandar; também **Recebe** o conteúdo atual do painel. |
-| **Painéis** | **Auto-conexão** ao abrir (varre a sub-rede sozinho), status online/instável/offline, **brilho**, **auto-brilho por sensor de luz**, **selo de sincronismo (CRC)**, ligar/desligar, identificar e renomear. Configura o **Wi-Fi do painel via USB** (ler/escanear redes, entrar na rede). |
-| **Agenda** | Agenda o envio de um álbum para um painel em data/hora, com opção **Diariamente** e brilho por tarefa. |
-| **Config** | Tema (Sistema/Claro/Escuro), cor do LED na prévia, efeito global das telas, IP local, senha de transmissão, **Diagnóstico do dispositivo** (chip, firmware, MAC) e **Diagnóstico do protocolo** (compila os arquivos reais no aparelho e confere o CRC). |
-
-### Recursos além do app Windows
-
-Três capacidades do hardware apareceram no código-fonte original mas **não estavam
-expostas** na interface do app Windows. Foram implementadas aqui:
-
-- 🔆 **Sensor de luz / auto-brilho** — o byte de brilho tem um flag no **bit 128**;
-  com ele ativo, o painel ajusta o brilho sozinho conforme a luz do ambiente. O
-  app mostra a leitura do sensor ao vivo.
-- ✅ **Sincronismo por CRC** — o painel reporta o CRC do conteúdo gravado nele; o app
-  compara com o que foi enviado e mostra **✓ Sincronizado** / **⚠ Desatualizado**.
-- 🔎 **Diagnóstico de hardware** — leitura *read-only* de identidade: descritores USB
-  (fabricante/produto/série + VID → chip) e, via ESP-AT, `AT+GMR` (firmware) e
-  `AT+CIFSR` (MAC/IP).
-
-**Robustez:** o estado de edição sobrevive à troca de aba e à rotação (ViewModels);
-transferências rodam num escopo que não é cancelado ao navegar; erros de rede/USB
-não derrubam o app; o texto é sanitizado (acentos viram os placeholders corretos;
-caracteres inválidos não corrompem o painel).
+| Não perder trabalho | Estado em **ViewModels** de escopo de Activity — sobrevive a troca de aba e rotação |
+| Não abortar transferência | Envio roda em escopo que **não é cancelado** ao navegar entre abas |
+| Não derrubar o app | Erros de rede/USB tratados; sem crash se o Wi-Fi cair |
+| Não corromper o painel | Texto **sanitizado**: acentos viram os placeholders corretos e caracteres fora da faixa não injetam `0xFF`/`CR` |
+| Não vazar recurso | Conexão USB fechada corretamente; laço de leitura sem *busy-wait* |
 
 ---
 
-## Começando
+## 💡 Recursos além do app Windows
+
+Três capacidades do hardware apareceram no código-fonte original mas **nunca foram
+expostas** na interface do software Windows. Foram implementadas aqui:
+
+<table>
+<tr><td width="55">🔆</td><td>
+
+**Sensor de luz / auto-brilho** — o byte de brilho carrega um flag no **bit 128**
+(`valor + 128`). Com ele ativo, o painel **ajusta o brilho sozinho** conforme a luz
+do ambiente. O app expõe o toggle e mostra a leitura do sensor em tempo real.
+
+</td></tr>
+<tr><td>✅</td><td>
+
+**Sincronismo por CRC** — o painel reporta no `STATUS=` o **CRC do conteúdo gravado
+nele**. O app compara com o CRC do álbum enviado e mostra, por painel,
+**✓ Sincronizado** ou **⚠ Desatualizado** — dá para saber num relance se o painel
+está exibindo mesmo o que foi mandado.
+
+</td></tr>
+<tr><td>🔎</td><td>
+
+**Diagnóstico de hardware** — leitura *read-only* de identidade: descritores USB
+(fabricante, produto, série, VID → chip) e, via ESP-AT, `AT+GMR` (versão de
+firmware) e `AT+CIFSR` (MAC/IP).
+
+</td></tr>
+</table>
+
+Também novos: **auto-conexão** ao abrir, **barra de memória**, **modelos de oferta**,
+**tema claro/escuro** e **modo retrato** no editor.
+
+---
+
+## 🔌 Como o hardware funciona
+
+O painel tem **três cérebros**. O app fala com os dois primeiros; o terceiro
+comanda os LEDs:
+
+```mermaid
+flowchart LR
+    A["📱 Android<br/>(este app)"]
+
+    subgraph P ["🖥️ Painel de LED"]
+        direction LR
+        U["🔌 Ponte USB-HID<br/>Microchip PIC<br/>VID 0x04D8 / PID 0xF002"]
+        W["📶 Módulo Wi-Fi<br/>ESP8266 (ESP-AT)<br/>modo UDP transparente"]
+        C["🧠 Controlador<br/>memória · brilho · sensor<br/>CRC · efeitos"]
+        M["🟧 Matriz de LED<br/>186 x 85 px"]
+        U -->|UART| C
+        W -->|UART| C
+        C --> M
+    end
+
+    A -->|"cabo OTG · report HID 64 B"| U
+    A -->|"UDP 17065 / 17066"| W
+
+    style A fill:#1E88E5,stroke:#1565C0,color:#fff
+    style M fill:#FFB020,stroke:#C77E00,color:#000
+    style C fill:#2B2F36,stroke:#4A5560,color:#fff
+```
+
+| Peça | Papel |
+|---|---|
+| **Ponte USB-HID** (Microchip PIC) | Caminho por cabo. Usada para **configurar a rede** do painel e também para enviar conteúdo. Report HID de 65 bytes (64 no Android, sem o ReportID). |
+| **Módulo Wi-Fi** (ESP8266, firmware ESP-AT) | Fica em **modo transparente**: escuta UDP na porta **17065** e repassa ao controlador; respostas voltam na **17066**. |
+| **Controlador** | O cérebro do painel: guarda o conteúdo, controla brilho/PWM, lê o **sensor de luz**, calcula CRC e aplica os efeitos. Firmware proprietário. |
+
+---
+
+## 📡 Protocolo
+
+### Gramática do conteúdo
+
+Um álbum é uma sequência de **quadros**; cada quadro tem um cabeçalho e vários
+**registros** (texto ou gráfico).
+
+```
+:TYPE;ADSIZE;DUR;F3;F4;F5;F6;ENABLE;      ← cabeçalho do quadro
+;LEN;SLOT;ROW;COL;FONT;TEXTO              ← registro de texto
+;5;0;ROW1;COL1;ROW2;COL2;                 ← registro gráfico (retângulo)
+```
+
+<details>
+<summary><b>Detalhe dos campos</b></summary>
+
+| Campo | Significado |
+|---|---|
+| `TYPE` | `1` = Oferta · `0` = Mensagem |
+| `ADSIZE` | `1` = meia tela (~94 col) · `0` = tela cheia (~186 col) |
+| `DUR` | Índice 0–16 → segundos `{0,2,3,4,5,6,7,8,9,10,15,20,25,30,40,50,60}` |
+| `F3`–`F6` | Mudam de significado conforme `TYPE`. **Oferta:** subtítulo · centavos desligados · centavos 3 casas · centavos reduzidos. **Mensagem:** tipo de borda |
+| `ENABLE` | Liga/desliga o quadro na sequência |
+| `SLOT` | Campo semântico (1–9; `6` = memo, `9` = linha de mensagem, **`0` = gráfico**) |
+| `ROW`/`COL` | Posição em pixels no canvas |
+| `FONT` | `0`–`4` → as fontes bitmap `7x4`, `17x8L`, `28x16`, `42x24`, `60X35` |
+
+**Canvas:** altura 0–85 linhas · largura 0–85 (meia) ou 0–182 (cheia). Monocromático.
+
+**Acentos:** o firmware não tem glifos acentuados — o app mapeia para os
+placeholders esperados (`Á`→`a`, `Ã`→`b`, `É`→`c`, `Ê`→`d`, `Í`→`e`, `Ó`→`f`,
+`Õ`→`g`, `Ú`→`h`, `Ç`→`i`, `ª`→`j`, `º`→`k`, `°`→`l`) e sanitiza o resto.
+
+</details>
+
+### Comandos
+
+| Comando | Direção | O que faz |
+|---|---|---|
+| `SERVIDOR=<ip>` | → painel | Anuncia o app na sub-rede (descoberta) |
+| `STATUS` / `STATUS=…` | ↔ | Pede/recebe telemetria: `id,estado,,,mem_ini,mem_fim,crc,intensidade` |
+| `ONLINE=<efeito>` | → painel | Resposta ao STATUS; **aplica o efeito global** |
+| `INICIAR=<brilho>` | → painel | Liga e define o brilho. **`+128` ativa o sensor de luz** |
+| `ONOFF=0` | → painel | Desliga o painel |
+| `APAGAR=` + 10 B | → painel | Inicia gravação (responde `APAGADO`) |
+| `DADO=` + bloco | → painel | Bloco de 60 bytes (responde `NEXT=<offset>`) |
+| `CARREGAR` | → painel | Inicia download (responde `MEMORIA=<n>`) |
+| `LIDO=<offset>` | → painel | Confirma bloco recebido |
+| `SENHA=` | → painel | Grava senha de transmissão (`NEGADO` se errada) |
+
+### Envio (stop-and-wait)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as 📱 App
+    participant P as 📺 Painel
+
+    A->>P: APAGAR= (+ código de senha)
+    P-->>A: APAGADO
+    loop cada bloco de 60 bytes
+        A->>P: DADO= [bloco @ offset]
+        P-->>A: NEXT=<offset+60>
+        Note over A: só avança se o offset bater exato<br/>timeout 1s · até 50 tentativas
+    end
+    A->>P: INICIAR=<brilho>
+    Note over P: começa a exibir a sequência
+```
+
+> `0xFF` separa blocos · `0xFF 0xFF` marca o fim · **CRC-16/XMODEM** (poly `0x1021`)
+> sobre `bytes[0..len-3]`.
+
+<details>
+<summary><b>Recebimento (download)</b></summary>
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as 📱 App
+    participant P as 📺 Painel
+
+    A->>P: CARREGAR
+    P-->>A: MEMORIA=<tamanho>
+    loop cada bloco
+        P-->>A: [bloco binário @ offset]
+        A->>P: LIDO=<offset+60>
+    end
+    P-->>A: ARQUIVAR
+    Note over A: decodifica e salva como .alb
+```
+
+</details>
+
+---
+
+## 🏗️ Arquitetura
+
+Camadas limpas, sem dependências circulares. O núcleo de protocolo é **Kotlin
+puro** — sem Android — e por isso 100% testável offline.
+
+```mermaid
+flowchart TD
+    UI["🎨 ui/ — Compose Material 3<br/>screens · components · theme · vm"]
+    ED["✏️ editor/ — FrameDraft<br/>(rascunho editável)"]
+    RN["🔤 render/ — fontes .flb<br/>OfertaLayout · PanelRenderer"]
+    PR["📦 protocol/ — codec binário<br/>CRC-16 · .alb · AccentMap"]
+    TR["🔄 transfer/ — upload/download<br/>(coroutines)"]
+    NT["🌐 net/ — UDP · pacotes · parser"]
+    USB["🔌 usb/ — HID · ESP-AT"]
+    DC["🔍 discovery/ — varredura · liveness"]
+    DA["💾 data/ — álbuns · painéis<br/>config · agenda (StateFlow)"]
+
+    UI --> ED & DA & TR & DC
+    ED --> RN --> PR
+    TR --> NT & USB
+    DC --> NT
+    DA --> PR
+
+    style PR fill:#1E88E5,stroke:#1565C0,color:#fff
+    style UI fill:#2B2F36,stroke:#4A5560,color:#fff
+```
+
+```
+br.com.painelofertas/
+├── protocol/   Codec binário, CRC-16/XMODEM, modelo .alb, normalização de texto
+├── render/     Fontes bitmap .flb, layout da Oferta, renderização da prévia
+├── net/        UDP (socket, pacotes, parser de respostas), Encriptor, LocalIp
+├── transfer/   Máquina de Enviar/Receber em blocos (coroutines, stop-and-wait)
+├── usb/        USB HID (device, link) + configurador Wi-Fi ESP-AT
+├── discovery/  Varredura da sub-rede (/24) + monitoramento dos painéis
+├── data/       Repositórios observáveis: painéis, álbuns, config, agenda
+├── editor/     FrameDraft — rascunho editável de quadro (Msg | Ofe | Raw)
+├── AppContainer / PainelApp    Injeção de dependências + ciclo de vida
+└── ui/         MainActivity · theme · components · screens · vm (ViewModels)
+```
+
+**Decisões de projeto**
+
+- **Coroutines + StateFlow** no lugar dos 6 `TTimer` e flags globais do original
+- **ViewModels de escopo de Activity** — o trabalho sobrevive a rotação e troca de aba
+- **`protocol/` sem Android** — testes rodam na JVM, sem emulador
+- **Sem dynamic color** — a identidade visual da marca aparece igual em todo aparelho
+
+---
+
+## 🚀 Começando
 
 ### Pré-requisitos
-- **Android Studio** (Ladybug 2024.2+) — já inclui JDK, Gradle e Android SDK
-- Aparelho **Android 7.0+** (API 24). Para o caminho **USB**, precisa de **USB OTG**
+- **Android Studio** Ladybug (2024.2) ou mais recente — já traz JDK, Gradle e SDK
+- Aparelho **Android 7.0+** (API 24) · para o caminho USB, precisa de **USB OTG**
 
-### Compilar e rodar
-1. Android Studio → **Open** → selecione a pasta do projeto
-2. Aguarde o **Gradle Sync** (na 1ª vez baixa Gradle e dependências)
-3. **Run ▶** no aparelho
-
+### Rodar
 ```bash
+git clone https://github.com/ChrnX0/painel-ofertas-android.git
+cd painel-ofertas-android
 ./gradlew assembleDebug     # gera app/build/outputs/apk/debug/app-debug.apk
 ./gradlew test              # roda os testes de unidade
 ```
 
-### APK de release (assinado)
-O APK de debug serve para testes. Para distribuir:
+Ou: Android Studio → **Open** → selecione a pasta → aguarde o Gradle Sync → **Run ▶**
+
+> 💡 **Sem compilar nada:** cada push gera o APK no CI.
+> Vá em **[Actions](../../actions)** → último run → **Artifacts** → baixe `painel-ofertas-debug-apk`.
+
+<details>
+<summary><b>Gerar um APK de release assinado</b></summary>
 
 ```bash
 keytool -genkey -v -keystore painel.jks -keyalg RSA -keysize 2048 -validity 10000 -alias painel
 ```
 
-Depois adicione um `signingConfigs` no `app/build.gradle.kts`, referencie em
+Depois adicione um `signingConfigs` em `app/build.gradle.kts`, referencie em
 `buildTypes { release { signingConfig = ... } }` e rode `./gradlew assembleRelease`.
 
-> Guarde o keystore e as senhas com segurança — é a identidade do app; sem ele não
-> dá para publicar atualizações.
+⚠️ Guarde o keystore e as senhas com segurança — é a identidade do app; sem ele não
+dá para publicar atualizações.
+
+</details>
 
 ---
 
-## Testes
+## 🧪 Testes
 
-`./gradlew test` — ~33 testes de unidade cobrindo:
+```bash
+./gradlew test
+```
 
-| Teste | Cobre |
+| Suíte | O que garante |
 |---|---|
-| `protocol/BinaryCodecTest` | Compila `nelPai` (49 B, CRC `0xD644`) e `mensagem` (111 B, CRC `0x06A2`) byte-a-byte; round-trip; CRC-16/XMODEM; sanitização de texto |
-| `protocol/AlbumTest`, `ProtocolFieldsTest` | Modelo `.alb`, campos do quadro, tabela de duração |
-| `render/FlbFontTest`, `AccentMapTest`, `OfertaLayoutTest` | Fontes bitmap, mapa de acentos, layout da oferta |
-| `transfer/TransferEngineTest` | Envio/recebimento em blocos contra um painel simulado |
+| `protocol/BinaryCodecTest` | Compila `nelPai` (**49 B, CRC `0xD644`**) e `mensagem` (**111 B, CRC `0x06A2`**) **byte-a-byte** contra os arquivos reais; round-trip; CRC-16/XMODEM; sanitização de texto |
+| `protocol/AlbumTest` · `ProtocolFieldsTest` | Modelo `.alb`, campos do quadro, tabela de duração |
+| `render/FlbFontTest` · `AccentMapTest` · `OfertaLayoutTest` | Parser das fontes bitmap, mapa de acentos, layout da oferta |
+| `transfer/TransferEngineTest` | Envio e recebimento em blocos contra um **painel simulado** |
 | `editor/FrameDraftTest` | Round-trip dos rascunhos de quadro |
 
----
-
-## Arquitetura
-
-```
-br.com.painelofertas/
-├── protocol/   # Codec binário, CRC, modelo .alb, normalização de texto (Kotlin puro)
-├── render/     # Fontes .flb, layout da Oferta, renderização da prévia
-├── net/        # UDP (socket, pacotes, parser), Encriptor, LocalIp
-├── transfer/   # Máquina de Enviar/Receber em blocos (coroutines)
-├── usb/        # USB HID (device, link, configurador Wi-Fi ESP-AT)
-├── discovery/  # Varredura da sub-rede + liveness dos painéis
-├── data/       # Repositórios: painéis, álbuns (observável), config, agenda
-├── editor/     # FrameDraft (rascunho editável de quadro)
-├── AppContainer / PainelApp   # injeção de dependências + ciclo de vida
-└── ui/         # Compose: MainActivity + theme + components + screens + vm
-```
-
-- `protocol/` é **Kotlin puro** (sem dependência de Android) → 100% testável offline
-- **Estado** em ViewModels de escopo de Activity — sobrevive a rotação/troca de aba
-- **Dados observáveis** (`StateFlow`) para álbuns, painéis e preferências
+O app também traz um **autoteste embarcado**: em **Config → Diagnóstico do
+protocolo**, ele compila os arquivos reais no próprio aparelho e confere o CRC.
 
 ---
 
-## Protocolo (resumo)
+## ⚠️ Status do projeto
 
-| Item | Detalhe |
+> **Este app ainda não foi testado contra um painel físico.**
+> Tudo foi derivado do código-fonte original e validado com testes de unidade e um
+> painel simulado.
+
+| Camada | Estado |
 |---|---|
-| **Hardware** | Módulo Wi-Fi **ESP8266** (firmware ESP-AT) atrás de ponte **USB-HID Microchip** (VID `0x04D8`, PID `0xF002`) |
-| **UDP** | App → painel na porta **17065** (texto + `CR`); respostas na **17066** |
-| **Quadro** | `:TYPE;ADSIZE;DUR;F3;F4;F5;F6;ENABLE;` |
-| **Registro** | `;LEN;SLOT;ROW;COL;FONT;TEXTO` — ou `;5;0;R1;C1;R2;C2;` para gráfico |
-| **Transferência** | Blocos de 60 bytes, *stop-and-wait*, ack `NEXT=<offset>` |
-| **Comandos** | `STATUS`, `INICIAR=<brilho>`, `ONOFF=0`, `APAGAR=`, `DADO=`, `CARREGAR`, `LIDO=`, `ONLINE=<efeito>`, `SERVIDOR=<ip>`, `SENHA=` |
-| **Brilho** | 0–100; **+128 liga o sensor de luz** (auto-brilho) |
-| **CRC** | CRC-16/XMODEM (poly `0x1021`) sobre `bytes[0..len-3]` |
+| Protocolo (codec, CRC, `.alb`, sanitização) | ✅ **Validado byte-a-byte** + testes |
+| Fontes `.flb` e renderização | ✅ Validado |
+| Transferência (enviar/receber em blocos) | ✅ Testada com painel simulado |
+| Descoberta + liveness (UDP) | ✅ Implementado |
+| Interface completa (5 abas) | ✅ Funcional |
+| USB HID + configuração Wi-Fi (ESP-AT) | ⚠️ Fiel à spec — **falta validar no hardware** |
+| Sensor de luz · CRC ao vivo · diagnóstico | ⚠️ Fiel à spec — **falta validar no hardware** |
 
-Referência completa e roteiro de validação: **[HANDOFF.md](HANDOFF.md)**.
-
----
-
-## Limitações conhecidas
-
-- **Validação em hardware pendente** — USB HID, entrada no Wi-Fi (ESP-AT), sensor
-  de luz e CRC ao vivo foram implementados fiéis à especificação extraída, mas só
-  o painel físico confirma 100%.
-- **Agendamento em segundo plano** — hoje o agendador dispara apenas com o app
-  aberto. Disparar com o app fechado exigiria `WorkManager`/`AlarmManager` e
-  validação em campo (Doze mode + otimizações de bateria de fabricantes).
-- **Rotação do painel** — o app tem um modo retrato de *layout*; a rotação real da
-  imagem depende do firmware do controlador.
+📋 O documento **[HANDOFF.md](HANDOFF.md)** traz um **roteiro de validação em 10
+passos** para conferir em bancada, além de perguntas técnicas sobre o firmware.
 
 ---
 
-## Propriedade e marca
+## 🗺️ Roadmap
+
+- [ ] **Validação em painel físico** — prioridade máxima ([roteiro](HANDOFF.md))
+- [ ] **Agendamento em segundo plano** (`WorkManager`/`AlarmManager`) — hoje o agendador
+      só dispara com o app aberto; exige validação em campo por causa do *Doze mode*
+      e das otimizações agressivas de bateria de alguns fabricantes
+- [ ] **Edição por toque na prévia** (WYSIWYG) — tocar no preço abre o campo do preço
+- [ ] **Rotação real do painel** — depende de suporte no firmware do controlador
+- [ ] Otimização do APK (R8/minify) após a validação em campo
+
+---
+
+## 🤝 Contribuindo
+
+Issues e PRs são bem-vindos. Antes de abrir um PR:
+
+1. `./gradlew test` deve passar
+2. Mudanças no `protocol/` precisam de **teste que compare bytes** — é o núcleo que
+   garante compatibilidade com o app Windows
+3. Descreva no PR o que foi testado **em hardware real**, se aplicável
+
+---
+
+## ⚖️ Propriedade e marca
 
 **Painel de Ofertas** é um produto da **LedBlock Indicadores Inteligentes**
-([ledblock.com.br](https://www.ledblock.com.br)) — a marca, o logotipo, o hardware
-e o protocolo do painel pertencem à empresa.
+([ledblock.com.br](https://www.ledblock.com.br)). A marca, o logotipo, o hardware e
+o protocolo do painel pertencem à empresa.
 
-Este repositório contém um **porte Android** desenvolvido de forma independente a
-partir do software Windows original, com o objetivo de ser entregue à LedBlock.
-Não é um produto oficial da empresa e não há vínculo comercial. Todos os direitos
-sobre a marca e o produto permanecem com a LedBlock.
+Este repositório contém um **porte Android desenvolvido de forma independente** a
+partir do software Windows original, com o objetivo de ser entregue à LedBlock. Não
+é um produto oficial da empresa e não há vínculo comercial. Todos os direitos sobre
+a marca e o produto permanecem com a LedBlock.
+
+<div align="center">
+<br>
+<sub>Feito para o balcão da loja — onde o preço precisa aparecer certo, na hora.</sub>
+</div>
