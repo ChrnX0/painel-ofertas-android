@@ -1,0 +1,24 @@
+# Normaliza quebras de linha: LF no repositório para tudo que é texto.
+* text=auto eol=lf
+
+# Scripts que precisam de quebra de linha específica
+gradlew        text eol=lf
+*.sh           text eol=lf
+*.bat          text eol=crlf
+*.cmd          text eol=crlf
+
+# Binários — nunca aplicar conversão de linha nem tentar fazer diff
+*.jar          binary
+*.png          binary
+*.jpg          binary
+*.jpeg         binary
+*.bmp          binary
+*.ico          binary
+*.webp         binary
+*.ttf          binary
+*.otf          binary
+*.flb          binary
+*.apk          binary
+*.aab          binary
+*.keystore     binary
+*.jks          binary
