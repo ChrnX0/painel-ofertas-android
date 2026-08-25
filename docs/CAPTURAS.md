@@ -87,6 +87,30 @@ O app segue o tema do sistema, ou você força em **Config → Tema**.
 
 ---
 
+## Identidade visual do projeto
+
+<img src="marca.svg" alt="Marca do projeto" width="96" align="left" hspace="16" vspace="4">
+
+**A marca é o produto em miniatura:** uma matriz de 3×3 LEDs, alguns acesos e
+outros apagados — que é exatamente o que um painel de LED é. Nasceu como um
+componente Compose de verdade (`LedBlockMark`, em `ui/components/Kit.kt`), pensado
+para a barra do app, e virou a imagem conceitual do repositório.
+
+<br clear="left">
+
+| Arquivo | Para que serve |
+|---|---|
+| [`marca.svg`](marca.svg) | Marca conceitual — cabeçalho do README, ícone/avatar do repositório |
+| [`banner.svg`](banner.svg) | Faixa do topo do README: texto renderizado em matriz de LED via `<mask>` + `<pattern>` |
+| [`exemplos-painel.svg`](exemplos-painel.svg) | Comparativo de configurações do painel — ver [EXEMPLOS.md](EXEMPLOS.md) |
+| [`social-preview.png`](social-preview.png) | Imagem exibida quando o link do repositório é compartilhado (1280×640). A placa é a **captura real do app**, não um desenho |
+
+> Para usar a social preview: **Settings → General → Social preview → Upload an
+> image** e envie `docs/social-preview.png`. O GitHub aceita apenas PNG/JPG/GIF —
+> por isso essa é a única peça em bitmap.
+
+---
+
 ## Como estas capturas foram feitas
 
 Emulador headless, sem intervenção manual:

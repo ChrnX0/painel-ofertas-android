@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/banner.svg" alt="Painel de Ofertas" width="100%">
+<img src="docs/marca.svg" alt="Marca do projeto: uma matriz de LEDs" width="88">
 
 # Painel de Ofertas — Android
 
@@ -17,6 +17,10 @@ Monte preços e mensagens no celular e envie ao painel por **Wi-Fi** ou **cabo U
 [![Protocolo](https://img.shields.io/badge/protocolo-validado_byte_a_byte-1E88E5)](#-protocolo)
 [![Status](https://img.shields.io/badge/hardware-valida%C3%A7%C3%A3o_pendente-FB8C00)](#%EF%B8%8F-status-do-projeto)
 [![Licença](https://img.shields.io/badge/licen%C3%A7a-todos_os_direitos_reservados-6E7681)](LICENSE)
+
+<br>
+
+<img src="docs/banner.svg" alt="Painel exibindo OFERTA R$ 9,90 O KILO" width="100%">
 
 </div>
 

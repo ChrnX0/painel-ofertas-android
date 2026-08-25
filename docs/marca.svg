@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Marca conceitual: uma matriz de 3x3 LEDs, alguns acesos">
+  <defs>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <linearGradient id="lit" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6FB8FF"/>
+      <stop offset="100%" stop-color="#3D97F5"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="256" height="256" rx="34" fill="#0F131A"/>
+
+  <!-- 3x3: célula 44, vão 14, início 48 -->
+  <g filter="url(#glow)">
+    <rect x="48"  y="48"  width="44" height="44" rx="11" fill="url(#lit)"/>
+    <rect x="164" y="48"  width="44" height="44" rx="11" fill="url(#lit)"/>
+    <rect x="48"  y="106" width="44" height="44" rx="11" fill="url(#lit)"/>
+    <rect x="106" y="106" width="44" height="44" rx="11" fill="url(#lit)"/>
+    <rect x="106" y="164" width="44" height="44" rx="11" fill="url(#lit)"/>
+    <rect x="164" y="164" width="44" height="44" rx="11" fill="url(#lit)"/>
+  </g>
+
+  <!-- LEDs apagados -->
+  <g fill="#1E2530">
+    <rect x="106" y="48"  width="44" height="44" rx="11"/>
+    <rect x="164" y="106" width="44" height="44" rx="11"/>
+    <rect x="48"  y="164" width="44" height="44" rx="11"/>
+  </g>
+</svg>
