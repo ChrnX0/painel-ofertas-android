@@ -22,6 +22,20 @@ Monte preços e mensagens no celular e envie ao painel por **Wi-Fi** ou **cabo U
 
 ---
 
+## 📱 O app
+
+<div align="center">
+<img src="docs/capturas/01-editar.png" alt="Editar — prévia de LED ao vivo" width="240">
+<img src="docs/capturas/03-paineis.png" alt="Painéis — descoberta automática" width="240">
+<img src="docs/capturas/05-config.png" alt="Config — tema e diagnóstico" width="240">
+<br>
+<sub><b>Editar</b> · prévia de LED ao vivo no tamanho real &nbsp;|&nbsp; <b>Painéis</b> · varre a rede sozinho &nbsp;|&nbsp; <b>Config</b> · tema, cor do LED e diagnóstico</sub>
+<br><br>
+<sub>🖼️ Todas as telas, incluindo o <b>tema claro</b>: <a href="docs/CAPTURAS.md">docs/CAPTURAS.md</a></sub>
+</div>
+
+---
+
 ## 📚 Documentação
 
 > **É desenvolvedor e vai pegar este projeto? Comece por aqui 👇**
