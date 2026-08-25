@@ -92,6 +92,9 @@ Ofertas da Semana     ← linha 0: nome
 > ⚠️ **Subtítulo ativo esconde o cabeçalho.** Não é bug: os dois disputam a linha
 > do topo. Ligado ⇒ Título + Subtítulo. Desligado ⇒ Cabeçalho + Título.
 
+> 🖼️ **Quer ver o efeito de cada flag?** [EXEMPLOS.md](EXEMPLOS.md) mostra o painel
+> renderizado em cada configuração.
+
 #### Tabela de duração
 
 | Índice | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 |

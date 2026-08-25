@@ -91,14 +91,16 @@ Roteiro de **10 passos** para validar contra um painel real
 </td>
 <td width="25%" align="center">
 
-### 📋
-**[Changelog](CHANGELOG.md)**
+### 🖼️
+**[Exemplos](docs/EXEMPLOS.md)**
 
-Histórico de todas as versões
+**Veja** o efeito de cada opção no painel, com renderizações reais
 
 </td>
 </tr>
 </table>
+
+<sub>📋 Histórico de versões: **[CHANGELOG.md](CHANGELOG.md)**</sub>
 
 Vai contribuir? **[CONTRIBUTING.md](CONTRIBUTING.md)** — com a regra que mais importa:
 *mudou `protocol/`, o teste compara bytes.*
