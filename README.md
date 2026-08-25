@@ -21,6 +21,51 @@ Monte preços e mensagens no celular e envie ao painel por **Wi-Fi** ou **cabo U
 
 ---
 
+## 📚 Documentação
+
+> **É desenvolvedor e vai pegar este projeto? Comece por aqui 👇**
+
+<table>
+<tr>
+<td width="25%" align="center">
+
+### 🚦
+**[Comece aqui](docs/COMECE-AQUI.md)**
+
+Onboarding em 30 min: glossário, ambiente, o caminho completo de um preço, roteiro de leitura e **as armadilhas**
+
+</td>
+<td width="25%" align="center">
+
+### 🏗️
+**[Arquitetura](docs/ARQUITETURA.md)**
+
+Mapa **arquivo por arquivo**: o que cada um faz, o que pode importar o quê, e por quê
+
+</td>
+<td width="25%" align="center">
+
+### 📡
+**[Protocolo](docs/PROTOCOLO.md)**
+
+A **especificação completa**: formato, bytes, comandos, CRC, USB, ESP-AT e vetores de teste
+
+</td>
+<td width="25%" align="center">
+
+### 🍳
+**[Receitas](docs/RECEITAS.md)**
+
+"Como faço X?" — 12 tarefas comuns passo a passo, com os arquivos exatos
+
+</td>
+</tr>
+</table>
+
+E para validar contra um painel real: **[HANDOFF.md](HANDOFF.md)** — roteiro de 10 passos.
+
+---
+
 ## 📑 Índice
 
 | | | |
@@ -313,6 +358,9 @@ sequenceDiagram
 
 </details>
 
+📡 **Especificação completa** — bytes, flags, slots, endianness, ESP-AT, senha e
+vetores de teste: **[docs/PROTOCOLO.md](docs/PROTOCOLO.md)**
+
 ---
 
 ## 🏗️ Arquitetura
@@ -362,6 +410,9 @@ br.com.painelofertas/
 - **ViewModels de escopo de Activity** — o trabalho sobrevive a rotação e troca de aba
 - **`protocol/` sem Android** — testes rodam na JVM, sem emulador
 - **Sem dynamic color** — a identidade visual da marca aparece igual em todo aparelho
+
+🏗️ **Mapa arquivo por arquivo**: **[docs/ARQUITETURA.md](docs/ARQUITETURA.md)**
+🍳 **"Como faço X?"**: **[docs/RECEITAS.md](docs/RECEITAS.md)**
 
 ---
 

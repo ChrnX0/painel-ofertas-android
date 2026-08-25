@@ -13,6 +13,17 @@ limpa e testada para oferecer o Painel de Ofertas também no Android.
 > simulado. A seção **"O que precisa da validação de vocês"** lista exatamente o
 > que confirmar em bancada.
 
+## 📚 Para a equipe de desenvolvimento
+
+Documentação de onboarding — pensada para alguém que nunca viu este código:
+
+| Documento | O que traz |
+|---|---|
+| 🚦 **[docs/COMECE-AQUI.md](docs/COMECE-AQUI.md)** | Onboarding em ~30 min: glossário do domínio, montagem do ambiente, o caminho completo de um preço (do formulário ao painel), roteiro de leitura do código e **as armadilhas** que fazem perder horas |
+| 🏗️ **[docs/ARQUITETURA.md](docs/ARQUITETURA.md)** | Mapa **arquivo por arquivo**: responsabilidade de cada um, o que pode depender de quê |
+| 📡 **[docs/PROTOCOLO.md](docs/PROTOCOLO.md)** | Especificação completa do protocolo, com as rotinas do `Ofertas.pas` que originaram cada parte |
+| 🍳 **[docs/RECEITAS.md](docs/RECEITAS.md)** | 12 tarefas passo a passo ("adicionar um campo", "depurar envio que falha", "ler o `.alb` gerado") |
+
 ---
 
 ## Estado da entrega
