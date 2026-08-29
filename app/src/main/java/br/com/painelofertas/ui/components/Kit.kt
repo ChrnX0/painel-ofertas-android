@@ -49,6 +49,20 @@ import br.com.painelofertas.ui.theme.PanelBg
 val ButtonShape = RoundedCornerShape(22.dp)
 
 /**
+ * Acentos **pastéis** — coloridos, porém suaves (nada gritante), legíveis nos dois
+ * temas. Usados nos ícones dos cartões e nos chips de status para dar cor sem berrar.
+ */
+object Accent {
+    val Blue = Color(0xFF8AB4F8)
+    val Green = Color(0xFF8FE0BF)
+    val Amber = Color(0xFFF3D08A)
+    val Lilac = Color(0xFFC3B0F5)
+    val Rose = Color(0xFFF2AEC6)
+    val Teal = Color(0xFF8FD9D2)
+    val Gray = Color(0xFF9AA6B6)
+}
+
+/**
  * Wordmark vetorial da LedBlock — nítido em qualquer tamanho e adapta ao tema
  * ("LED" no azul da marca, "BL[bloco]CK" na cor do texto). O "O" de BLOCK é o
  * quadradinho (o "block"). Substitui o logo raster que ficava pequeno.
@@ -237,10 +251,10 @@ private fun Screw(modifier: Modifier = Modifier) {
 fun StatusPill(phase: LinkPhase, label: String, modifier: Modifier = Modifier) {
     val cs = MaterialTheme.colorScheme
     val target = when (phase) {
-        LinkPhase.ONLINE -> Color(0xFF34D399)
-        LinkPhase.SEARCHING -> Color(0xFFFBBF24)
-        LinkPhase.TRANSFER -> Color(0xFF3B9EFF)
-        LinkPhase.ERROR -> Color(0xFFF87171)
+        LinkPhase.ONLINE -> Accent.Green
+        LinkPhase.SEARCHING -> Accent.Amber
+        LinkPhase.TRANSFER -> Accent.Blue
+        LinkPhase.ERROR -> Accent.Rose
         LinkPhase.OFFLINE -> cs.outline
     }
     val dotColor by animateColorAsState(target, tween(400), label = "pillColor")

@@ -3,10 +3,12 @@ package br.com.painelofertas.ui.screens
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +26,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Router
@@ -57,6 +60,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -68,6 +72,7 @@ import br.com.painelofertas.data.PanelStatus
 import br.com.painelofertas.data.SyncState
 import br.com.painelofertas.net.LocalIp
 import br.com.painelofertas.net.UdpLink
+import br.com.painelofertas.ui.components.Accent
 import br.com.painelofertas.ui.components.Appear
 import br.com.painelofertas.ui.components.ButtonShape
 import br.com.painelofertas.ui.components.CardHeader
@@ -133,6 +138,7 @@ fun PaineisScreen() {
                 Appear(delayMillis = 60 + i * 40) {
                     PanelCard(
                         p,
+                        usbConnected = usbConnected,
                         onApply = { v, sensor ->
                             container.panels.setBrightness(p.id, v)
                             container.panels.setSensorAuto(p.id, sensor)
@@ -143,6 +149,19 @@ fun PaineisScreen() {
                         onDesligar = { cmd("ONOFF=0") },
                         onRename = { container.panels.rename(p.id, it) },
                         onDelete = { container.panels.remove(p.id) },
+                        onSaveConfig = { note, ssid, senha, dhcp, sip, gw, mask ->
+                            container.panels.setConfig(p.id, note, ssid, senha, dhcp, sip, gw, mask)
+                        },
+                        onApplyUsb = { ssid, senha, dhcp, sip, gw, mask ->
+                            container.usb.link.value?.let { link ->
+                                scope.launch {
+                                    WifiModuleConfigurator(link).join(
+                                        ssid = ssid, password = senha, localIp = localIp,
+                                        dhcp = dhcp, staticIp = sip, gateway = gw, netmask = mask,
+                                    )
+                                }
+                            }
+                        },
                     )
                 }
             }
@@ -162,7 +181,7 @@ private fun RedeAparelhoCard(localIp: String, onIp: (String) -> Unit) {
     var dhcp by remember { mutableStateOf(container.settings.dhcp) }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            CardHeader(Icons.Filled.Router, AccentBlue, "Rede do aparelho", "Como o painel encontra este celular na rede.")
+            CardHeader(Icons.Filled.Router, Accent.Blue, "Rede do aparelho", "Como o painel encontra este celular na rede.")
             OutlinedTextField(localIp, onIp, label = { Text("IP deste celular") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Painel usa DHCP", style = MaterialTheme.typography.bodyLarge)
@@ -198,7 +217,7 @@ private fun PanelPasswordCard(
 
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            CardHeader(Icons.Filled.Lock, AccentAmber, "Senha do painel (via USB)")
+            CardHeader(Icons.Filled.Lock, Accent.Amber, "Senha do painel (via USB)")
             if (!usbConnected) {
                 Text(
                     "Conecte por USB para definir ou remover a senha de transmissão exigida ao enviar.",
@@ -252,19 +271,22 @@ private fun PanelPasswordCard(
 @Composable
 private fun PanelCard(
     p: Panel,
+    usbConnected: Boolean,
     onApply: (Int, Boolean) -> Unit,
     onIdentificar: () -> Unit,
     onLigar: () -> Unit,
     onDesligar: () -> Unit,
     onRename: (String) -> Unit,
     onDelete: () -> Unit,
+    onSaveConfig: (String, String, String, Boolean, String, String, String) -> Unit,
+    onApplyUsb: (String, String, Boolean, String, String, String) -> Unit,
 ) {
     var nome by remember(p.id) { mutableStateOf(p.name) }
     var brilho by remember(p.id, p.brightness) { mutableFloatStateOf(p.brightness.toFloat()) }
     var sensor by remember(p.id, p.sensorAuto) { mutableStateOf(p.sensorAuto) }
 
     Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
 
             // status (chip colorido) + excluir
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
@@ -306,6 +328,70 @@ private fun PanelCard(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = onIdentificar, shape = ButtonShape) { Text("Identificar") }
                 OutlinedButton(onClick = { onRename(nome) }, shape = ButtonShape) { Text("Renomear") }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            PanelConfigSection(p, usbConnected, onSaveConfig, onApplyUsb)
+        }
+    }
+}
+
+/** Seção expansível de config por painel: apelido + rede própria (Wi-Fi/DHCP/IP fixo). */
+@Composable
+private fun PanelConfigSection(
+    p: Panel,
+    usbConnected: Boolean,
+    onSaveConfig: (String, String, String, Boolean, String, String, String) -> Unit,
+    onApplyUsb: (String, String, Boolean, String, String, String) -> Unit,
+) {
+    var expanded by remember(p.id) { mutableStateOf(false) }
+    var note by remember(p.id, p.note) { mutableStateOf(p.note) }
+    var ssid by remember(p.id, p.ssid) { mutableStateOf(p.ssid) }
+    var senha by remember(p.id, p.wifiPassword) { mutableStateOf(p.wifiPassword) }
+    var dhcp by remember(p.id, p.dhcp) { mutableStateOf(p.dhcp) }
+    var sip by remember(p.id, p.staticIp) { mutableStateOf(p.staticIp) }
+    var gw by remember(p.id, p.gateway) { mutableStateOf(p.gateway) }
+    var mask by remember(p.id, p.netmask) { mutableStateOf(p.netmask) }
+    var saved by remember(p.id) { mutableStateOf(false) }
+
+    Column(Modifier.animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            Modifier.fillMaxWidth().clickable { expanded = !expanded },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            SectionLabel("Configurações do painel")
+            val rot by animateFloatAsState(if (expanded) 180f else 0f, label = "cfg")
+            Icon(Icons.Filled.ExpandMore, if (expanded) "Recolher" else "Expandir", Modifier.rotate(rot))
+        }
+        androidx.compose.animation.AnimatedVisibility(expanded) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(note, { note = it; saved = false }, label = { Text("Apelido / observação") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                Text(
+                    "Rede que este painel usa (aplicada por cabo USB).",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(ssid, { ssid = it; saved = false }, label = { Text("Rede Wi-Fi (SSID)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(senha, { senha = it; saved = false }, label = { Text("Senha do Wi-Fi") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Usar DHCP (IP automático)", style = MaterialTheme.typography.bodyLarge)
+                    Switch(dhcp, { dhcp = it; saved = false })
+                }
+                androidx.compose.animation.AnimatedVisibility(!dhcp) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(sip, { sip = it; saved = false }, label = { Text("IP fixo") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(gw, { gw = it; saved = false }, label = { Text("Gateway") }, singleLine = true, modifier = Modifier.weight(1f))
+                            OutlinedTextField(mask, { mask = it; saved = false }, label = { Text("Máscara") }, singleLine = true, modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { onSaveConfig(note, ssid, senha, dhcp, sip, gw, mask); saved = true }, shape = ButtonShape) { Text("Salvar") }
+                    OutlinedButton(onClick = { onApplyUsb(ssid, senha, dhcp, sip, gw, mask) }, enabled = usbConnected, shape = ButtonShape) { Text("Aplicar via USB") }
+                }
+                if (saved) Text("✓ Salvo neste aparelho.", style = MaterialTheme.typography.bodySmall, color = Accent.Green)
             }
         }
     }
@@ -362,7 +448,7 @@ private fun WifiConfigCard(
 
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            CardHeader(Icons.Filled.Wifi, AccentBlue, "Wi-Fi do painel (via USB)")
+            CardHeader(Icons.Filled.Wifi, Accent.Teal, "Conectar painel novo (via USB)")
             if (!usbConnected) {
                 Text(
                     "Conecte o painel por cabo USB (OTG) para configurar em qual rede Wi-Fi ele entra.",
@@ -411,15 +497,11 @@ private fun WifiConfigCard(
     }
 }
 
-// Acentos de cor por área funcional (rede = azul, segurança = âmbar).
-private val AccentBlue = Color(0xFF3B9EFF)
-private val AccentAmber = Color(0xFFFBBF24)
-
 private fun statusColor(s: PanelStatus): Color = when (s) {
-    PanelStatus.ONLINE -> Color(0xFF34D399)
-    PanelStatus.DEGRADED -> Color(0xFFFB8C00)
-    PanelStatus.OFFLINE -> Color(0xFF7A8699)
-    PanelStatus.USB -> Color(0xFF3B9EFF)
+    PanelStatus.ONLINE -> Accent.Green
+    PanelStatus.DEGRADED -> Accent.Amber
+    PanelStatus.OFFLINE -> Accent.Gray
+    PanelStatus.USB -> Accent.Blue
 }
 
 /** Texto relativo de "visto por último" (para o histórico de painéis). */

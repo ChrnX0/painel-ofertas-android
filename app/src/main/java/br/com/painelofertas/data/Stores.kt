@@ -114,6 +114,13 @@ class PairedPanelsStore(context: Context) : PanelStore {
                     sensorAuto = o.optBoolean("sensorAuto", false),
                     expectedCrc = o.optInt("expectedCrc", 0),
                     lastSeen = o.optLong("lastSeen", 0),
+                    note = o.optString("note"),
+                    ssid = o.optString("ssid"),
+                    wifiPassword = o.optString("wifiPassword"),
+                    dhcp = o.optBoolean("dhcp", true),
+                    staticIp = o.optString("staticIp"),
+                    gateway = o.optString("gateway"),
+                    netmask = o.optString("netmask"),
                     status = PanelStatus.OFFLINE,
                     // Começa "bem offline" para o liveness NÃO promovê-lo a
                     // "instável" antes de um STATUS real chegar.
@@ -130,7 +137,10 @@ class PairedPanelsStore(context: Context) : PanelStore {
                 org.json.JSONObject()
                     .put("id", p.id).put("name", p.name).put("ip", p.ip)
                     .put("brightness", p.brightness).put("sensorAuto", p.sensorAuto)
-                    .put("expectedCrc", p.expectedCrc).put("lastSeen", p.lastSeen),
+                    .put("expectedCrc", p.expectedCrc).put("lastSeen", p.lastSeen)
+                    .put("note", p.note).put("ssid", p.ssid).put("wifiPassword", p.wifiPassword)
+                    .put("dhcp", p.dhcp).put("staticIp", p.staticIp)
+                    .put("gateway", p.gateway).put("netmask", p.netmask),
             )
         }
         prefs.edit().putString("panels", arr.toString()).apply()

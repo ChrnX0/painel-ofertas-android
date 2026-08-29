@@ -48,9 +48,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.painelofertas.BuildConfig
 import br.com.painelofertas.R
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Palette
 import br.com.painelofertas.protocol.BinaryCodec
+import br.com.painelofertas.ui.components.Accent
 import br.com.painelofertas.ui.components.Appear
 import br.com.painelofertas.ui.components.ButtonShape
+import br.com.painelofertas.ui.components.CardHeader
 import br.com.painelofertas.ui.components.MonoText
 import br.com.painelofertas.ui.components.SectionLabel
 import br.com.painelofertas.ui.components.SegChoice
@@ -89,27 +96,21 @@ fun ConfigScreen() {
         Appear(delayMillis = 50) {
             Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
                 Column(Modifier.padding(16.dp)) {
-                    Text("Tema do aplicativo", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "Aparência do app no celular — não altera o painel.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 2.dp),
-                    )
+                    CardHeader(Icons.Filled.Palette, Accent.Lilac, "Tema do aplicativo", "Aparência do app no celular — não altera o painel.")
                     SegChoice(
                         listOf("Sistema", "Claro", "Escuro"),
                         themeMode,
-                        Modifier.padding(top = 10.dp).fillMaxWidth(),
+                        Modifier.padding(top = 12.dp).fillMaxWidth(),
                     ) { container.settings.setThemeMode(it) }
                 }
             }
         }
 
         Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            Column(Modifier.padding(12.dp)) {
-                Text("Prévia — cor do LED", style = MaterialTheme.typography.titleMedium)
+            Column(Modifier.padding(16.dp)) {
+                CardHeader(Icons.Filled.Lightbulb, Accent.Amber, "Prévia — cor do LED")
                 Row(
-                    Modifier.horizontalScroll(rememberScrollState()).padding(top = 6.dp),
+                    Modifier.horizontalScroll(rememberScrollState()).padding(top = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     LedColors.forEachIndexed { i, c ->
@@ -139,14 +140,8 @@ fun ConfigScreen() {
 
         Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
             Column(Modifier.padding(16.dp)) {
-                Text("Efeito global das telas", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "Como as telas trocam no painel. (Rede e IP do aparelho agora ficam na aba Painéis.)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-                Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                CardHeader(Icons.Filled.AutoAwesome, Accent.Teal, "Efeito global das telas", "Como as telas trocam no painel. (Rede e IP do aparelho agora ficam na aba Painéis.)")
+                Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     EFEITOS.forEachIndexed { i, nome ->
                         FilterChip(
                             selected = efeito == i,
@@ -159,10 +154,10 @@ fun ConfigScreen() {
         }
 
         Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            Column(Modifier.padding(12.dp)) {
-                Text("Segurança de transmissão", style = MaterialTheme.typography.titleMedium)
+            Column(Modifier.padding(16.dp)) {
+                CardHeader(Icons.Filled.Lock, Accent.Rose, "Segurança de transmissão")
                 Row(
-                    Modifier.fillMaxWidth(),
+                    Modifier.fillMaxWidth().padding(top = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {

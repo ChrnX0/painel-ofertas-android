@@ -28,6 +28,15 @@ data class Panel(
     val expectedCrc: Int = 0,
     /** Instante da última vez visto (epoch ms). 0 = nunca nesta instalação. */
     val lastSeen: Long = 0,
+    /** Apelido/observação livre do lojista (ex.: "vitrine", "corredor 3"). */
+    val note: String = "",
+    /** Rede que este painel deve usar (lembrada por painel, editável no card). */
+    val ssid: String = "",
+    val wifiPassword: String = "",
+    val dhcp: Boolean = true,
+    val staticIp: String = "",
+    val gateway: String = "",
+    val netmask: String = "",
     val status: PanelStatus = PanelStatus.OFFLINE,
     val missedBeats: Int = 0,
 ) {
@@ -123,6 +132,21 @@ class PanelRepository(private val store: PanelStore? = null) {
     /** Marca qual CRC esperamos que o painel (por IP) esteja exibindo — chamado após um envio. */
     fun setExpectedCrc(ip: String, crc: Int) {
         persistUpdate { list -> list.map { if (it.ip == ip) it.copy(expectedCrc = crc) else it } }
+    }
+
+    /** Salva a configuração editável do painel: apelido/observação + rede própria. */
+    fun setConfig(
+        id: String, note: String, ssid: String, wifiPassword: String,
+        dhcp: Boolean, staticIp: String, gateway: String, netmask: String,
+    ) {
+        persistUpdate { list ->
+            list.map {
+                if (it.id == id) it.copy(
+                    note = note, ssid = ssid, wifiPassword = wifiPassword,
+                    dhcp = dhcp, staticIp = staticIp, gateway = gateway, netmask = netmask,
+                ) else it
+            }
+        }
     }
 
     fun remove(id: String) {

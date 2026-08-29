@@ -29,6 +29,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
@@ -47,6 +48,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -82,6 +84,7 @@ import br.com.painelofertas.protocol.DurationTable
 import br.com.painelofertas.protocol.PanelFont
 import br.com.painelofertas.render.OfertaSpec
 import br.com.painelofertas.render.PanelRenderer
+import br.com.painelofertas.ui.components.Accent
 import br.com.painelofertas.ui.components.Appear
 import br.com.painelofertas.ui.components.ButtonShape
 import br.com.painelofertas.ui.components.CardHeader
@@ -113,6 +116,7 @@ fun EditarScreen() {
     val usbConnected by container.usb.connected.collectAsState()
     var confirmOverwrite by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
+    var confirmDeleteAlbum by remember { mutableStateOf<String?>(null) }
     var panelBusy by remember { mutableStateOf(false) }
 
     val cur = vm.current
@@ -265,12 +269,21 @@ fun EditarScreen() {
                         }
                     }
                     if (albuns.isNotEmpty()) {
+                        Text("Álbuns salvos (toque para abrir, ✕ para excluir):", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text("Abrir:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             albuns.forEach { a ->
-                                AssistChip(onClick = {
-                                    container.albums.load(a)?.let { vm.load(it); msg = "Aberto \"${it.name}\"." }
-                                }, label = { Text(a) })
+                                InputChip(
+                                    selected = vm.nome == a,
+                                    onClick = { container.albums.load(a)?.let { vm.load(it); msg = "Aberto \"${it.name}\"." } },
+                                    label = { Text(a) },
+                                    trailingIcon = {
+                                        Icon(
+                                            Icons.Filled.Close,
+                                            "Excluir álbum \"$a\"",
+                                            Modifier.size(18.dp).clickable { confirmDeleteAlbum = a },
+                                        )
+                                    },
+                                )
                             }
                         }
                     }
@@ -301,6 +314,19 @@ fun EditarScreen() {
             text = { Text("Isso apaga todas as telas gravadas no painel e deixa o display em branco. Não afeta seus álbuns salvos no celular.") },
             confirmButton = { TextButton(onClick = { confirmClear = false; limpar() }) { Text("Limpar") } },
             dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Cancelar") } },
+        )
+    }
+
+    confirmDeleteAlbum?.let { alb ->
+        AlertDialog(
+            onDismissRequest = { confirmDeleteAlbum = null },
+            icon = { Icon(Icons.Filled.Delete, null) },
+            title = { Text("Excluir álbum?") },
+            text = { Text("Remover \"$alb\" deste aparelho. Não afeta o que já está gravado no painel.") },
+            confirmButton = {
+                TextButton(onClick = { container.albums.delete(alb); msg = "Álbum \"$alb\" excluído."; confirmDeleteAlbum = null }) { Text("Excluir") }
+            },
+            dismissButton = { TextButton(onClick = { confirmDeleteAlbum = null }) { Text("Cancelar") } },
         )
     }
 }
@@ -347,8 +373,6 @@ private fun SequenciaCard(
     }
 }
 
-private val AccentGreen = androidx.compose.ui.graphics.Color(0xFF34D399)
-
 /** Ações que falam com o painel físico: sincronizar a sequência e limpar tudo. */
 @Composable
 private fun PainelCard(
@@ -360,7 +384,7 @@ private fun PainelCard(
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                CardHeader(Icons.Filled.Sync, AccentGreen, "Painel")
+                CardHeader(Icons.Filled.Sync, Accent.Green, "Painel")
                 if (busy) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
             }
             Text(

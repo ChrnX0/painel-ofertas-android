@@ -8,6 +8,29 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.28.0] — 2026-08-29 · `versionCode 30`
+
+Continuação do retorno do cliente: config por painel + paleta pastel.
+
+### Adicionado
+- **Configuração por painel** (seção expansível no card): **apelido/observação** e a
+  **rede própria** do painel — Wi-Fi (SSID/senha), **DHCP** ou **IP fixo/gateway/
+  máscara** — tudo persistido no histórico, com **Salvar** e **Aplicar via USB**
+- Novos campos no `Panel` + `PanelRepository.setConfig` + persistência no
+  `PairedPanelsStore`
+- **Excluir álbuns**: cada álbum salvo (no card Álbum do editor) agora tem um **✕**
+  com confirmação — expõe o `AlbumStore.delete` que existia mas não tinha UI
+
+### Alterado
+- **Paleta pastel** (`Accent`): cores suaves nos ícones dos cartões e nos chips de
+  status — colorido, mas sem berrar. Aplicada em Painéis, Editar e Config
+- Cartão global de Wi-Fi via USB renomeado para **"Conectar painel novo (via USB)"**
+  (a rede dos painéis já conhecidos agora se edita no próprio card)
+- Cabeçalhos coloridos (`CardHeader`) nas telas de **Config** (Tema, Cor do LED,
+  Efeito, Segurança)
+
+---
+
 ## [0.27.0] — 2026-08-29 · `versionCode 29`
 
 Reorganização de usabilidade a partir do retorno do cliente + passe de cor e movimento.
