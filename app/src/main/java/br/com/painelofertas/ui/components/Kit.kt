@@ -302,7 +302,7 @@ private fun Screw(modifier: Modifier = Modifier) {
  * transferir. A cor muda com transição suave (nada "pula").
  */
 @Composable
-fun StatusPill(phase: LinkPhase, label: String, modifier: Modifier = Modifier) {
+fun StatusPill(phase: LinkPhase, icon: ImageVector, contentDescription: String, modifier: Modifier = Modifier) {
     val cs = MaterialTheme.colorScheme
     val target = when (phase) {
         LinkPhase.ONLINE -> Accent.Green
@@ -345,7 +345,7 @@ fun StatusPill(phase: LinkPhase, label: String, modifier: Modifier = Modifier) {
                     .background(dotColor.copy(alpha = if (blinking) pulse else 1f)),
             )
         }
-        Text(label, fontFamily = Mono, fontSize = 10.sp, fontWeight = FontWeight.Medium, color = cs.onSurfaceVariant)
+        Icon(icon, contentDescription, tint = cs.onSurfaceVariant, modifier = Modifier.size(15.dp))
     }
 }
 

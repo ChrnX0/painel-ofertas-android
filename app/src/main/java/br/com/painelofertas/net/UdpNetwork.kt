@@ -27,6 +27,7 @@ class UdpNetwork(
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
     private val listenPort: Int = PanelPacket.PORT_LISTEN,
     private val panelPort: Int = PanelPacket.PORT_PANEL,
+    private val log: DiagnosticsLog? = null,
 ) {
     private var socket: DatagramSocket? = null
     private var receiver: Job? = null
@@ -50,6 +51,7 @@ class UdpNetwork(
                     val p = DatagramPacket(buf, buf.size)
                     s.receive(p)
                     val ip = p.address?.hostAddress ?: continue
+                    log?.let { it.rx(ip, it.describe(p.data.copyOfRange(p.offset, p.offset + p.length))) }
                     _incoming.tryEmit(Datagram(ip, decode(p.data, p.offset, p.length)))
                 } catch (_: Exception) {
                     if (!isActive || socket == null) break
@@ -69,6 +71,10 @@ class UdpNetwork(
 
     suspend fun send(ip: String, bytes: ByteArray): Unit = withContext(Dispatchers.IO) {
         try {
+            log?.let {
+                val desc = it.describe(bytes)
+                if (!desc.startsWith("SERVIDOR=")) it.tx(ip, desc) // varredura não polui o log
+            }
             socket?.send(DatagramPacket(bytes, bytes.size, InetAddress.getByName(ip), panelPort))
         } catch (_: Exception) {
             // rede indisponível ou IP/host inválido — ignora em vez de derrubar o app

@@ -82,6 +82,7 @@ import br.com.painelofertas.ui.components.EmptyState
 import br.com.painelofertas.ui.components.accentCardColors
 import br.com.painelofertas.ui.components.MonoText
 import br.com.painelofertas.ui.components.SectionLabel
+import br.com.painelofertas.ui.LocalSnackbar
 import br.com.painelofertas.ui.rememberContainer
 import br.com.painelofertas.usb.WifiModuleConfigurator
 import kotlinx.coroutines.launch
@@ -90,6 +91,7 @@ import kotlinx.coroutines.launch
 fun PaineisScreen() {
     val container = rememberContainer()
     val scope = rememberCoroutineScope()
+    val snackbar = LocalSnackbar.current
     val panels by container.panels.panels.collectAsState()
     val usbConnected by container.usb.connected.collectAsState()
     var localIp by remember { mutableStateOf(container.settings.localIp.ifBlank { LocalIp.detect() ?: "" }) }
@@ -137,7 +139,10 @@ fun PaineisScreen() {
             }
         } else {
             panels.forEachIndexed { i, p ->
-                fun cmd(text: String) = scope.launch { UdpLink(p.ip, container.udp).sendText(text) }
+                fun cmd(text: String) = scope.launch {
+                    UdpLink(p.ip, container.udp).sendText(text)
+                    snackbar.showSnackbar("Enviado ao painel: $text")
+                }
                 Appear(delayMillis = 60 + i * 40) {
                     PanelCard(
                         p,
@@ -239,6 +244,23 @@ private fun DiagnosticoCard() {
             paineis.firstOrNull()?.let { p ->
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 MonoText("memória livre (${p.name}): ${p.freeMemory} bytes", size = 11)
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            val logLines by container.diag.lines.collectAsState()
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                SectionLabel("Registro (TX/RX)")
+                TextButton(onClick = { container.diag.clear() }, enabled = logLines.isNotEmpty()) { Text("Limpar") }
+            }
+            if (logLines.isEmpty()) {
+                MonoText(
+                    "Sem tráfego ainda. Toque em Ligar/Identificar num painel e veja aqui o que sai (TX) e o que o painel responde (RX).",
+                    size = 10, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                logLines.takeLast(15).forEach { l ->
+                    MonoText("${l.time} ${l.dir} ${l.peer}  ${l.text}", size = 10, color = if (l.dir == "TX") Accent.Blue else Accent.Green)
+                }
             }
         }
     }

@@ -12,6 +12,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -66,12 +69,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import br.com.painelofertas.data.PanelStatus
@@ -81,6 +87,7 @@ import br.com.painelofertas.net.PanelLink
 import br.com.painelofertas.net.UdpLink
 import br.com.painelofertas.protocol.Album
 import br.com.painelofertas.protocol.DurationTable
+import br.com.painelofertas.protocol.PanelFrame
 import br.com.painelofertas.protocol.PanelFont
 import br.com.painelofertas.render.OfertaSpec
 import br.com.painelofertas.render.PanelRenderer
@@ -90,6 +97,7 @@ import br.com.painelofertas.ui.components.Appear
 import br.com.painelofertas.ui.components.ButtonShape
 import br.com.painelofertas.ui.components.CardHeader
 import br.com.painelofertas.ui.components.LedBezel
+import br.com.painelofertas.ui.components.OnAccent
 import br.com.painelofertas.ui.components.accentCardColors
 import br.com.painelofertas.ui.components.MonoText
 import br.com.painelofertas.ui.components.PanelPreview
@@ -119,7 +127,9 @@ fun EditarScreen() {
     var confirmOverwrite by remember { mutableStateOf(false) }
     var confirmClear by remember { mutableStateOf(false) }
     var confirmDeleteAlbum by remember { mutableStateOf<String?>(null) }
+    var showNameDialog by remember { mutableStateOf(false) }
     var panelBusy by remember { mutableStateOf(false) }
+    val ledIdx by container.settings.ledColor.collectAsState()
 
     val cur = vm.current
 
@@ -128,16 +138,17 @@ fun EditarScreen() {
         msg = "Álbum \"${vm.nome}\" salvo (${vm.frames.size} telas)."
     }
 
-    // Alvo das ações de painel (sincronizar / limpar): prefere um painel online
-    // na rede; se não houver, usa o USB conectado.
-    val onlinePanel = panels.firstOrNull { it.status == PanelStatus.ONLINE }
-    fun viaUsb() = onlinePanel == null && usbConnected
+    // Alvo das ações de painel (sincronizar / limpar): prefere um painel online,
+    // mas aceita QUALQUER painel conhecido (o status "esfria" pra instável em ~15s,
+    // então exigir ONLINE travava o botão); se não houver, usa o USB conectado.
+    val targetPanel = panels.firstOrNull { it.status == PanelStatus.ONLINE } ?: panels.firstOrNull()
+    fun viaUsb() = targetPanel == null && usbConnected
     fun panelLink(): PanelLink? = when {
-        onlinePanel != null -> UdpLink(onlinePanel.ip, container.udp)
+        targetPanel != null -> UdpLink(targetPanel.ip, container.udp)
         usbConnected -> container.usb.link.value
         else -> null
     }
-    val temPainel = onlinePanel != null || usbConnected
+    val temPainel = targetPanel != null || usbConnected
 
     fun sincronizar() {
         val link = panelLink() ?: run { msg = "Nenhum painel conectado. Abra a aba Painéis para localizar."; return }
@@ -148,11 +159,10 @@ fun EditarScreen() {
             val album = runCatching { container.downloadAlbum(link) }.getOrNull()
             container.connection.transferEnded(usb, album != null)
             if (album == null) msg = "Não consegui ler o painel (verifique a conexão)."
-            else if (album.frames.isEmpty()) msg = "O painel está vazio — nada para sincronizar."
+            else if (album.frames.isEmpty()) { vm.setLive(album); msg = "O painel está vazio." }
             else {
-                vm.mergePanelFrames(album)
-                msg = "Sincronizado: ${album.frames.size} tela(s) do painel. Elas entraram na sequência — " +
-                    "selecione qualquer uma para excluir, reordene e insira a sua onde quiser."
+                vm.setLive(album)
+                msg = "Painel lido: ${album.frames.size} tela(s). Arraste a prévia para comparar Editando ↔ No painel."
             }
             panelBusy = false
         }
@@ -164,7 +174,7 @@ fun EditarScreen() {
         val usb = viaUsb()
         container.connection.transferStarted(usb)
         editScope.launch {
-            val ok = runCatching { container.clearPanel(link, onlinePanel?.brightness ?: 100) }.getOrDefault(false)
+            val ok = runCatching { container.clearPanel(link, targetPanel?.brightness ?: 100) }.getOrDefault(false)
             container.connection.transferEnded(usb, ok)
             msg = if (ok) "✅ Painel limpo." else "❌ Falha ao limpar o painel."
             panelBusy = false
@@ -194,61 +204,59 @@ fun EditarScreen() {
         }
     }
 
-    Column(
-        Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
+    Column(Modifier.fillMaxSize()) {
 
-        Appear {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                SectionLabel("Editor de telas")
-                Text("Montar", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
+        // ===== FAIXA FIXA (não rola): números + prévia + info =====
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            SectionLabel("Editor de telas")
+            ScreensBar(vm) { showNameDialog = true }
+            if (cur != null) {
+                PreviewPager(cur.build(fonts, vm.portrait), cur.halfScreen, vm.portrait, vm.liveAlbum, vm.sel, ledIdx)
             }
         }
 
-        // ===== 1. PRÉVIA =====
-        if (cur != null) {
-            Appear(delayMillis = 50) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    PreviewCard(cur.build(fonts, vm.portrait), cur.halfScreen, vm.portrait)
-                    SegChoice(listOf("Horizontal", "Vertical"), if (vm.portrait) 1 else 0, Modifier.fillMaxWidth()) { vm.portrait = it == 1 }
-                }
-            }
-        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-        // ===== 2. CONTEÚDO (o que aparece no painel) =====
-        Appear(delayMillis = 100) {
+        // ===== CONTEÚDO ROLÁVEL =====
+        Column(
+            Modifier.weight(1f).fillMaxWidth().verticalScroll(scroll).padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            SegChoice(listOf("Horizontal", "Vertical"), if (vm.portrait) 1 else 0, Modifier.fillMaxWidth()) { vm.portrait = it == 1 }
+
             when (val d = cur) {
                 is FrameDraft.Msg -> MsgForm(d) { vm.replaceSel(it) }
                 is FrameDraft.Ofe -> OfeForm(d) { vm.replaceSel(it) }
                 is FrameDraft.Raw -> Text(
-                    "Oferta salva — preview e reordenação disponíveis. Para editar campo-a-campo, crie uma nova Oferta.",
+                    "Tela salva — prévia e reordenação disponíveis. Para editar campo-a-campo, crie uma nova tela.",
                     style = MaterialTheme.typography.bodySmall,
                 )
                 null -> {}
             }
-        }
 
-        // ===== 3. SEQUÊNCIA (telas do álbum + tempo) =====
-        Appear(delayMillis = 150) { SequenciaCard(vm, editScope, snackbar) }
+            SequenciaCard(vm, editScope, snackbar)
 
-        // ===== 4. PAINEL (sincronizar / limpar) =====
-        Appear(delayMillis = 200) {
             PainelCard(
                 temPainel = temPainel,
                 busy = panelBusy,
                 onSincronizar = { sincronizar() },
                 onLimpar = { confirmClear = true },
             )
-        }
 
-        // ===== 5. ÁLBUM (salvar / abrir / enviar) =====
-        Appear(delayMillis = 250) {
+            // ===== ÁLBUM =====
             Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Blue)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SectionLabel("Álbum")
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                        SectionLabel("Álbum")
+                        TextButton(onClick = { vm.newAlbum(); msg = "Novo álbum em branco." }) {
+                            Icon(Icons.Filled.Add, null, Modifier.size(16.dp)); Spacer(Modifier.size(4.dp)); Text("Novo álbum")
+                        }
+                    }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedTextField(vm.nome, { vm.nome = it }, label = { Text("Nome") }, singleLine = true, modifier = Modifier.weight(1f))
+                        OutlinedTextField(vm.nome, { vm.nome = it }, label = { Text("Nome do álbum") }, singleLine = true, modifier = Modifier.weight(1f))
                         Button(
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -263,10 +271,10 @@ fun EditarScreen() {
                         modifier = Modifier.fillMaxWidth(),
                     ) { Icon(Icons.AutoMirrored.Filled.Send, null, Modifier.size(18.dp)); Spacer(Modifier.size(8.dp)); Text("Salvar e enviar") }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        OutlinedButton(onClick = { exportLauncher.launch("${vm.nome.ifBlank { "Painel" }}.alb") }, shape = ButtonShape, modifier = Modifier.weight(1f)) {
+                        AccentOutlinedButton(onClick = { exportLauncher.launch("${vm.nome.ifBlank { "Painel" }}.alb") }, modifier = Modifier.weight(1f)) {
                             Icon(Icons.Filled.Upload, null, Modifier.size(18.dp)); Spacer(Modifier.size(6.dp)); Text("Exportar")
                         }
-                        OutlinedButton(onClick = { importLauncher.launch(arrayOf("*/*")) }, shape = ButtonShape, modifier = Modifier.weight(1f)) {
+                        AccentOutlinedButton(onClick = { importLauncher.launch(arrayOf("*/*")) }, modifier = Modifier.weight(1f)) {
                             Icon(Icons.Filled.Download, null, Modifier.size(18.dp)); Spacer(Modifier.size(6.dp)); Text("Importar")
                         }
                     }
@@ -291,10 +299,17 @@ fun EditarScreen() {
                     }
                 }
             }
-        }
 
-        if (msg.isNotBlank()) {
-            Appear { Text(msg, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary) }
+            if (msg.isNotBlank()) {
+                Text(msg, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+    }
+
+    if (showNameDialog) {
+        NovaTelaDialog(sugestao = "Tela ${vm.frames.size + 1}", onDismiss = { showNameDialog = false }) { nome, tipoMsg ->
+            if (tipoMsg) vm.addMsg(nome) else vm.addOfe(nome)
+            showNameDialog = false
         }
     }
 
@@ -341,17 +356,19 @@ private fun SequenciaCard(
     snackbar: androidx.compose.material3.SnackbarHostState,
 ) {
     val cur = vm.current
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Teal)) {
+        Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SectionLabel("Sequência · ${vm.frames.size} ${if (vm.frames.size == 1) "tela" else "telas"}")
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 vm.frames.forEachIndexed { i, d ->
-                    FilterChip(selected = i == vm.sel, onClick = { vm.selected = i }, label = { Text("${i + 1} · ${d.label()}") })
+                    FilterChip(selected = i == vm.sel, onClick = { vm.selected = i }, label = { Text("${i + 1} · ${d.display()}") })
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                OutlinedButton(onClick = { vm.addMsg() }, shape = ButtonShape) { Icon(Icons.Filled.Add, null, Modifier.size(18.dp)); Spacer(Modifier.size(6.dp)); Text("Mensagem") }
-                OutlinedButton(onClick = { vm.addOfe() }, shape = ButtonShape) { Icon(Icons.Filled.Add, null, Modifier.size(18.dp)); Spacer(Modifier.size(6.dp)); Text("Oferta") }
+            if (cur != null) {
+                OutlinedTextField(
+                    cur.name, { vm.renameFrame(vm.sel, it) },
+                    label = { Text("Nome desta tela") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { vm.moveUp() }) { Icon(Icons.Filled.KeyboardArrowUp, "Subir") }
@@ -395,12 +412,12 @@ private fun PainelCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                AccentOutlinedButton(onClick = onSincronizar, enabled = temPainel && !busy, accent = Accent.Green, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Filled.Sync, null, Modifier.size(18.dp)); Spacer(Modifier.size(6.dp)); Text("Sincronizar")
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                AccentOutlinedButton(onClick = onSincronizar, enabled = temPainel && !busy, accent = Accent.Green, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.Sync, null, Modifier.size(18.dp)); Spacer(Modifier.size(6.dp)); Text("Sincronizar com o painel")
                 }
-                AccentOutlinedButton(onClick = onLimpar, enabled = temPainel && !busy, accent = Accent.Rose, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Filled.DeleteSweep, null, Modifier.size(18.dp)); Spacer(Modifier.size(6.dp)); Text("Limpar")
+                AccentOutlinedButton(onClick = onLimpar, enabled = temPainel && !busy, accent = Accent.Rose, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.DeleteSweep, null, Modifier.size(18.dp)); Spacer(Modifier.size(6.dp)); Text("Limpar painel")
                 }
             }
         }
@@ -427,8 +444,106 @@ private fun formatPreco(valor: String, cents3: Boolean, centsOff: Boolean): Stri
     return "R$ $reais,$cents"
 }
 
+/** Fileira de telas numeradas (One UI) + botão "+". Desliza na horizontal. */
 @Composable
-private fun PreviewCard(frame: br.com.painelofertas.protocol.PanelFrame, halfScreen: Boolean, portrait: Boolean) {
+private fun ScreensBar(vm: EditorViewModel, onAdd: () -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        vm.frames.forEachIndexed { i, _ ->
+            val selected = i == vm.sel
+            Box(
+                Modifier.size(46.dp).clip(RoundedCornerShape(15.dp))
+                    .background(if (selected) cs.primary else cs.surfaceContainerHigh)
+                    .clickable { vm.selected = i },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    "${i + 1}",
+                    color = if (selected) OnAccent else cs.onSurface,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+        }
+        Box(
+            Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(cs.surfaceContainerHigh).clickable { onAdd() },
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.Filled.Add, "Nova tela", tint = cs.primary) }
+    }
+}
+
+/** Prévia deslizável: página 0 = a tela sendo editada; página 1 = o que está no painel. */
+@Composable
+private fun PreviewPager(editing: PanelFrame, half: Boolean, portrait: Boolean, live: Album?, liveIndex: Int, ledIdx: Int) {
+    val pager = rememberPagerState(pageCount = { 2 })
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        HorizontalPager(state = pager, pageSpacing = 12.dp, modifier = Modifier.fillMaxWidth()) { page ->
+            if (page == 0) {
+                PreviewCard(editing, half, portrait, badge = "EDITANDO", boardHeight = 126.dp)
+            } else {
+                val liveFrames = live?.frames.orEmpty()
+                if (liveFrames.isNotEmpty()) {
+                    val f = liveFrames[liveIndex.coerceIn(0, liveFrames.lastIndex)]
+                    PreviewCard(f, f.halfScreen, portrait, badge = "NO PAINEL", boardHeight = 126.dp)
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LedBezel(Modifier.fillMaxWidth(), boardHeight = 126.dp) {
+                            Text(
+                                "Toque em \"Sincronizar com o painel\"\npara ver aqui o que está no painel.",
+                                color = Color(0xFF6A7480),
+                                style = MaterialTheme.typography.bodySmall,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        }
+                        MonoText("NO PAINEL · aguardando sincronismo", size = 10)
+                    }
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+            repeat(2) { i ->
+                Box(
+                    Modifier.padding(horizontal = 3.dp).size(7.dp).clip(CircleShape)
+                        .background(if (pager.currentPage == i) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant),
+                )
+            }
+        }
+    }
+}
+
+/** Diálogo do "+": nomear a nova tela e escolher o tipo. */
+@Composable
+private fun NovaTelaDialog(sugestao: String, onDismiss: () -> Unit, onCreate: (String, Boolean) -> Unit) {
+    var nome by remember { mutableStateOf("") }
+    var tipoMsg by remember { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Filled.Add, null) },
+        title = { Text("Nova tela") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(nome, { nome = it }, label = { Text("Nome (ex.: Picanha)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                SegChoice(listOf("Oferta", "Mensagem"), if (tipoMsg) 1 else 0, Modifier.fillMaxWidth()) { tipoMsg = it == 1 }
+            }
+        },
+        confirmButton = { TextButton(onClick = { onCreate(nome.ifBlank { sugestao }, tipoMsg) }) { Text("Criar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+    )
+}
+
+@Composable
+private fun PreviewCard(
+    frame: PanelFrame,
+    halfScreen: Boolean,
+    portrait: Boolean,
+    badge: String = "PRÉVIA AO VIVO",
+    boardHeight: Dp = 138.dp,
+) {
     val container = rememberContainer()
     val fonts = container.fonts
     val (cols, rows) = panelDims(halfScreen, portrait)
@@ -445,7 +560,7 @@ private fun PreviewCard(frame: br.com.painelofertas.protocol.PanelFrame, halfScr
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        LedBezel(Modifier.fillMaxWidth(), boardHeight = 138.dp) {
+        LedBezel(Modifier.fillMaxWidth(), boardHeight = boardHeight) {
             PanelPreview(
                 bmp,
                 Modifier.fillMaxSize().padding(10.dp).graphicsLayer { alpha = pulse },
@@ -455,7 +570,7 @@ private fun PreviewCard(frame: br.com.painelofertas.protocol.PanelFrame, halfScr
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(6.dp).clip(CircleShape).background(led))
             MonoText(
-                "PRÉVIA AO VIVO · ${if (halfScreen) "MEIA" else "CHEIA"}" +
+                "$badge · ${if (halfScreen) "MEIA" else "CHEIA"}" +
                     (if (portrait) " · VERTICAL" else " · HORIZONTAL") + " · ${cols}×$rows",
                 size = 10,
             )

@@ -8,6 +8,34 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.30.0] — 2026-08-29 · `versionCode 32`
+
+Reforma grande a partir do retorno do cliente: navegação por menu, editor com faixa
+fixa, e diagnóstico de rede.
+
+### Adicionado
+- **Menu lateral (gaveta ☰)** no lugar da barra de abas inferior. Barra superior:
+  ☰ à esquerda, **logo maior centralizado**, indicadores à direita
+- **Indicadores por ícone**: o texto "Wi-Fi"/"USB" virou **ícone** (📶 / USB),
+  mantendo a bolinha colorida de status
+- **Editor com faixa fixa**: fileira de **telas numeradas** (One UI) + **"＋"** que
+  abre um diálogo para **nomear** a nova tela e escolher o tipo; **prévia deslizável**
+  (arraste entre *Editando* ↔ *No painel*); a info do painel fica fixa — só o
+  formulário rola
+- **Nomes por tela**: cada tela do álbum tem nome editável (nos quadradinhos e na
+  Sequência)
+- **Novo álbum** no cartão Álbum
+- **Console de diagnóstico TX/RX** (aba Painéis) — o "Memo2" do app Windows que faltava:
+  registra o que o app envia e o que o painel responde, com hora
+- **Feedback ao enviar** comandos ao painel (aviso na tela)
+
+### Corrigido
+- **Sincronizar/Limpar travados**: o botão exigia um painel *ONLINE* naquele instante
+  (o status esfria pra "instável" em ~15 s); agora vale **qualquer painel conhecido**
+- Botão "Sincronizar" com a palavra quebrada — botões do cartão Painel empilhados
+
+---
+
 ## [0.29.0] — 2026-08-29 · `versionCode 31`
 
 Reorganização de abas + passe de cor pastel (retorno do cliente).

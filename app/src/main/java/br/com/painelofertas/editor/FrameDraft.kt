@@ -22,8 +22,13 @@ data class LineDraft(
 sealed interface FrameDraft {
     val halfScreen: Boolean
     val durationIndex: Int
+    /** Nome dado pelo lojista (aparece nos quadradinhos e na Sequência). Só na sessão. */
+    val name: String
     fun build(fonts: FontProvider, portrait: Boolean = false): PanelFrame
     fun label(): String
+
+    /** Rótulo a exibir: o nome, ou o tipo se não houver nome. */
+    fun display(): String = name.ifBlank { label() }
 
     /** Mensagem de texto livre. */
     data class Msg(
@@ -32,6 +37,7 @@ sealed interface FrameDraft {
         override val durationIndex: Int = 0,
         val border: Int = 0, // 0=sem, 1=segmentada, 2=contínua
         val enabled: Boolean = true,
+        override val name: String = "",
     ) : FrameDraft {
         override fun build(fonts: FontProvider, portrait: Boolean) = PanelFrame(
             type = FrameType.MENSAGEM,
@@ -51,6 +57,7 @@ sealed interface FrameDraft {
     data class Ofe(
         val spec: OfertaSpec = OfertaSpec(cabecalho = "OFERTA", valor = "990"),
         override val halfScreen: Boolean = true,
+        override val name: String = "",
     ) : FrameDraft {
         override val durationIndex: Int get() = spec.duracaoIndex
         override fun build(fonts: FontProvider, portrait: Boolean) = OfertaLayout.build(spec, fonts, halfScreen, portrait)
@@ -58,7 +65,7 @@ sealed interface FrameDraft {
     }
 
     /** Quadro carregado de um álbum salvo que não é reeditável campo-a-campo (só preview/enviar). */
-    data class Raw(val frame: PanelFrame) : FrameDraft {
+    data class Raw(val frame: PanelFrame, override val name: String = "") : FrameDraft {
         override val halfScreen: Boolean get() = frame.halfScreen
         override val durationIndex: Int get() = frame.durationIndex
         override fun build(fonts: FontProvider, portrait: Boolean) = frame

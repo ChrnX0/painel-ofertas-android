@@ -23,13 +23,29 @@ class EditorViewModel : ViewModel() {
     /** Orientação do painel: false = horizontal (deitado), true = vertical (em pé). */
     var portrait by mutableStateOf(false)
 
+    /** Snapshot do que está gravado no painel (para a prévia "ao vivo" deslizável). */
+    var liveAlbum by mutableStateOf<Album?>(null)
+        private set
+    fun setLive(album: Album?) { liveAlbum = album }
+
     val sel: Int get() = selected.coerceIn(0, (frames.size - 1).coerceAtLeast(0))
     val current: FrameDraft? get() = frames.getOrNull(sel)
 
     fun replaceSel(d: FrameDraft) { if (sel in frames.indices) frames[sel] = d }
 
-    fun addMsg() { frames.add(FrameDraft.Msg()); selected = frames.lastIndex }
-    fun addOfe() { frames.add(FrameDraft.Ofe()); selected = frames.lastIndex }
+    fun addMsg(name: String = "") { frames.add(FrameDraft.Msg(name = name)); selected = frames.lastIndex }
+    fun addOfe(name: String = "") { frames.add(FrameDraft.Ofe(name = name)); selected = frames.lastIndex }
+
+    /** Renomeia a tela [index] (o nome aparece nos quadradinhos e na Sequência). */
+    fun renameFrame(index: Int, newName: String) {
+        if (index in frames.indices) {
+            frames[index] = when (val d = frames[index]) {
+                is FrameDraft.Msg -> d.copy(name = newName)
+                is FrameDraft.Ofe -> d.copy(name = newName)
+                is FrameDraft.Raw -> d.copy(name = newName)
+            }
+        }
+    }
 
     fun duplicate() {
         if (sel in frames.indices) { frames.add(sel + 1, frames[sel]); selected = sel + 1 }
@@ -76,6 +92,15 @@ class EditorViewModel : ViewModel() {
         album.frames.forEach { frames.add(FrameDraft.fromFrame(it)) }
         if (frames.isEmpty()) frames.add(FrameDraft.Msg())
         selected = 0
+    }
+
+    /** Começa um álbum novo em branco (uma Oferta), zerando a prévia ao vivo. */
+    fun newAlbum() {
+        nome = "Álbum 1"
+        frames.clear()
+        frames.add(FrameDraft.Ofe())
+        selected = 0
+        liveAlbum = null
     }
 
     /**

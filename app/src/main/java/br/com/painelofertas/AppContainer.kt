@@ -9,6 +9,7 @@ import br.com.painelofertas.data.ScheduleStore
 import br.com.painelofertas.data.SettingsStore
 import br.com.painelofertas.discovery.PanelDiscovery
 import br.com.painelofertas.net.ConnectionCenter
+import br.com.painelofertas.net.DiagnosticsLog
 import br.com.painelofertas.net.Encriptor
 import br.com.painelofertas.net.LocalIp
 import br.com.painelofertas.net.PanelLink
@@ -41,7 +42,8 @@ class AppContainer(context: Context) {
     val schedule = ScheduleStore(context)
     val fonts = FontRepository(context)
 
-    val udp = UdpNetwork(appScope)
+    val diag = DiagnosticsLog()
+    val udp = UdpNetwork(appScope, log = diag)
     val discovery = PanelDiscovery(udp, panels, appScope, settings)
     val usb = UsbController(context, appScope)
     val connection = ConnectionCenter(appScope, panels, discovery, usb)
