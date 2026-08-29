@@ -85,10 +85,12 @@ import br.com.painelofertas.protocol.PanelFont
 import br.com.painelofertas.render.OfertaSpec
 import br.com.painelofertas.render.PanelRenderer
 import br.com.painelofertas.ui.components.Accent
+import br.com.painelofertas.ui.components.AccentOutlinedButton
 import br.com.painelofertas.ui.components.Appear
 import br.com.painelofertas.ui.components.ButtonShape
 import br.com.painelofertas.ui.components.CardHeader
 import br.com.painelofertas.ui.components.LedBezel
+import br.com.painelofertas.ui.components.accentCardColors
 import br.com.painelofertas.ui.components.MonoText
 import br.com.painelofertas.ui.components.PanelPreview
 import br.com.painelofertas.ui.components.SectionLabel
@@ -242,7 +244,7 @@ fun EditarScreen() {
 
         // ===== 5. ÁLBUM (salvar / abrir / enviar) =====
         Appear(delayMillis = 250) {
-            Card(Modifier.fillMaxWidth()) {
+            Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Blue)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     SectionLabel("Álbum")
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -381,7 +383,7 @@ private fun PainelCard(
     onSincronizar: () -> Unit,
     onLimpar: () -> Unit,
 ) {
-    Card(Modifier.fillMaxWidth()) {
+    Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Green)) {
         Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 CardHeader(Icons.Filled.Sync, Accent.Green, "Painel")
@@ -394,16 +396,12 @@ private fun PainelCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(onClick = onSincronizar, enabled = temPainel && !busy, shape = ButtonShape, modifier = Modifier.weight(1f)) {
+                AccentOutlinedButton(onClick = onSincronizar, enabled = temPainel && !busy, accent = Accent.Green, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Filled.Sync, null, Modifier.size(18.dp)); Spacer(Modifier.size(6.dp)); Text("Sincronizar")
                 }
-                OutlinedButton(
-                    onClick = onLimpar,
-                    enabled = temPainel && !busy,
-                    shape = ButtonShape,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                    modifier = Modifier.weight(1f),
-                ) { Icon(Icons.Filled.DeleteSweep, null, Modifier.size(18.dp)); Spacer(Modifier.size(6.dp)); Text("Limpar") }
+                AccentOutlinedButton(onClick = onLimpar, enabled = temPainel && !busy, accent = Accent.Rose, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Filled.DeleteSweep, null, Modifier.size(18.dp)); Spacer(Modifier.size(6.dp)); Text("Limpar")
+                }
             }
         }
     }
@@ -585,7 +583,7 @@ private fun OfeForm(draft: FrameDraft.Ofe, onChange: (FrameDraft.Ofe) -> Unit) {
         }
 
         // === PREÇO (herói do formulário) ===
-        Card {
+        Card(colors = accentCardColors(Accent.Amber)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionLabel("Preço")
                 OutlinedTextField(

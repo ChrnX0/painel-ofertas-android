@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -20,9 +22,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardColors
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -34,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -60,6 +68,52 @@ object Accent {
     val Rose = Color(0xFFF2AEC6)
     val Teal = Color(0xFF8FD9D2)
     val Gray = Color(0xFF9AA6B6)
+}
+
+/** Texto/ícone escuro para uso SOBRE um preenchimento pastel (bom contraste). */
+val OnAccent = Color(0xFF0A0F16)
+
+/**
+ * Cartão com um **banho leve** da cor de acento — dá cor à superfície inteira,
+ * porém bem suave (nada gritante). Combine com um [CardHeader] do mesmo tom.
+ */
+@Composable
+fun accentCardColors(accent: Color): CardColors {
+    val base = MaterialTheme.colorScheme.surfaceContainerHigh
+    return CardDefaults.cardColors(containerColor = lerp(base, accent, 0.10f))
+}
+
+/** Botão preenchido em cor **pastel** (texto escuro para contraste). */
+@Composable
+fun AccentButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    accent: Color = MaterialTheme.colorScheme.primary,
+    enabled: Boolean = true,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Button(
+        onClick, modifier, enabled = enabled, shape = ButtonShape,
+        colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = OnAccent),
+        content = content,
+    )
+}
+
+/** Botão contornado em cor pastel (borda + texto no tom do acento). */
+@Composable
+fun AccentOutlinedButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    accent: Color = MaterialTheme.colorScheme.primary,
+    enabled: Boolean = true,
+    content: @Composable RowScope.() -> Unit,
+) {
+    OutlinedButton(
+        onClick, modifier, enabled = enabled, shape = ButtonShape,
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = accent),
+        border = BorderStroke(1.5.dp, accent.copy(alpha = if (enabled) 0.5f else 0.2f)),
+        content = content,
+    )
 }
 
 /**

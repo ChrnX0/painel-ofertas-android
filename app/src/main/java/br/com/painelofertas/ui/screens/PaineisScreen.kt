@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Router
 import androidx.compose.material.icons.filled.Tv
@@ -73,10 +74,12 @@ import br.com.painelofertas.data.SyncState
 import br.com.painelofertas.net.LocalIp
 import br.com.painelofertas.net.UdpLink
 import br.com.painelofertas.ui.components.Accent
+import br.com.painelofertas.ui.components.AccentOutlinedButton
 import br.com.painelofertas.ui.components.Appear
 import br.com.painelofertas.ui.components.ButtonShape
 import br.com.painelofertas.ui.components.CardHeader
 import br.com.painelofertas.ui.components.EmptyState
+import br.com.painelofertas.ui.components.accentCardColors
 import br.com.painelofertas.ui.components.MonoText
 import br.com.painelofertas.ui.components.SectionLabel
 import br.com.painelofertas.ui.rememberContainer
@@ -171,7 +174,83 @@ fun PaineisScreen() {
         Appear { RedeAparelhoCard(localIp) { localIp = it; container.settings.localIp = it } }
         Appear(delayMillis = 40) { WifiConfigCard(usbConnected, localIp, container, scope) }
         Appear(delayMillis = 80) { PanelPasswordCard(usbConnected, container, scope) }
+        Appear(delayMillis = 120) { DiagnosticoCard() }
     }
+}
+
+/** Diagnóstico do dispositivo/painel conectado (movido de Config). */
+@Composable
+private fun DiagnosticoCard() {
+    val container = rememberContainer()
+    val scope = rememberCoroutineScope()
+    val usbConnected by container.usb.connected.collectAsState()
+    val usbInfo by container.usb.info.collectAsState()
+    val paineis by container.panels.panels.collectAsState()
+    var probing by remember { mutableStateOf(false) }
+    var probe by remember { mutableStateOf<WifiModuleConfigurator.DeviceProbe?>(null) }
+    var probeMsg by remember { mutableStateOf("") }
+
+    Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Lilac)) {
+        Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            CardHeader(Icons.Filled.Memory, Accent.Lilac, "Diagnóstico do dispositivo")
+
+            val info = usbInfo
+            if (usbConnected && info != null) {
+                Text("● Conectado por USB", style = MaterialTheme.typography.bodyMedium, color = Accent.Green)
+                MonoText("chip: ${chipName(info.vendorId)}", size = 11)
+                MonoText("VID 0x%04X · PID 0x%04X".format(info.vendorId, info.productId), size = 11)
+                info.manufacturer?.takeIf { it.isNotBlank() }?.let { MonoText("fabricante: $it", size = 11) }
+                info.product?.takeIf { it.isNotBlank() }?.let { MonoText("produto: $it", size = 11) }
+                info.serial?.takeIf { it.isNotBlank() }?.let { MonoText("série: $it", size = 11) }
+            } else {
+                Text("Nenhum painel conectado por USB.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
+            OutlinedButton(onClick = { container.usb.ensureConnected() }, shape = ButtonShape) { Text("Procurar dispositivo USB") }
+
+            if (usbConnected) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                OutlinedButton(
+                    enabled = !probing,
+                    shape = ButtonShape,
+                    onClick = {
+                        val link = container.usb.link.value ?: return@OutlinedButton
+                        probing = true; probeMsg = "Consultando o módulo…"; probe = null
+                        scope.launch {
+                            val r = runCatching { WifiModuleConfigurator(link).probe() }.getOrNull()
+                            probe = r
+                            probeMsg = if (r == null || (r.firmware.isEmpty() && r.mac.isBlank()))
+                                "Sem resposta do módulo (verifique o cabo/OTG)." else ""
+                            probing = false
+                        }
+                    },
+                ) { Text(if (probing) "Consultando…" else "Ler firmware & MAC do módulo Wi-Fi") }
+
+                probe?.let { r ->
+                    if (r.mac.isNotBlank()) MonoText("MAC: ${r.mac}", size = 11, color = MaterialTheme.colorScheme.primary)
+                    if (r.ip.isNotBlank()) MonoText("IP: ${r.ip}", size = 11)
+                    r.firmware.forEach { MonoText(it, size = 11) }
+                }
+                if (probeMsg.isNotBlank()) {
+                    Text(probeMsg, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+
+            paineis.firstOrNull()?.let { p ->
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                MonoText("memória livre (${p.name}): ${p.freeMemory} bytes", size = 11)
+            }
+        }
+    }
+}
+
+/** Nome do fabricante a partir do VID USB (os mais comuns em pontes seriais/HID). */
+private fun chipName(vid: Int): String = when (vid) {
+    0x04D8 -> "Microchip (ponte USB / PIC)"
+    0x10C4 -> "Silicon Labs (CP210x)"
+    0x1A86 -> "WCH (CH340 / CH9102)"
+    0x0403 -> "FTDI"
+    else -> "VID 0x%04X".format(vid)
 }
 
 /** Rede do celular (movido de Config): IP do aparelho + DHCP do painel. */
@@ -179,7 +258,7 @@ fun PaineisScreen() {
 private fun RedeAparelhoCard(localIp: String, onIp: (String) -> Unit) {
     val container = rememberContainer()
     var dhcp by remember { mutableStateOf(container.settings.dhcp) }
-    Card(Modifier.fillMaxWidth()) {
+    Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Blue)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             CardHeader(Icons.Filled.Router, Accent.Blue, "Rede do aparelho", "Como o painel encontra este celular na rede.")
             OutlinedTextField(localIp, onIp, label = { Text("IP deste celular") }, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -215,7 +294,7 @@ private fun PanelPasswordCard(
         }
     }
 
-    Card(Modifier.fillMaxWidth()) {
+    Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Amber)) {
         Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             CardHeader(Icons.Filled.Lock, Accent.Amber, "Senha do painel (via USB)")
             if (!usbConnected) {
@@ -285,7 +364,7 @@ private fun PanelCard(
     var brilho by remember(p.id, p.brightness) { mutableFloatStateOf(p.brightness.toFloat()) }
     var sensor by remember(p.id, p.sensorAuto) { mutableStateOf(p.sensorAuto) }
 
-    Card(Modifier.fillMaxWidth()) {
+    Card(Modifier.fillMaxWidth(), colors = accentCardColors(statusColor(p.status))) {
         Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
 
             // status (chip colorido) + excluir
@@ -322,12 +401,12 @@ private fun PanelCard(
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { onApply(brilho.toInt(), sensor) }, shape = ButtonShape) { Text("Aplicar") }
-                OutlinedButton(onClick = onLigar, shape = ButtonShape) { Text("Ligar") }
-                OutlinedButton(onClick = onDesligar, shape = ButtonShape) { Text("Desligar") }
+                AccentOutlinedButton(onClick = onLigar, accent = Accent.Green) { Text("Ligar") }
+                AccentOutlinedButton(onClick = onDesligar, accent = Accent.Rose) { Text("Desligar") }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onIdentificar, shape = ButtonShape) { Text("Identificar") }
-                OutlinedButton(onClick = { onRename(nome) }, shape = ButtonShape) { Text("Renomear") }
+                AccentOutlinedButton(onClick = onIdentificar, accent = Accent.Amber) { Text("Identificar") }
+                AccentOutlinedButton(onClick = { onRename(nome) }, accent = Accent.Blue) { Text("Renomear") }
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -446,7 +525,7 @@ private fun WifiConfigCard(
     var senha by remember { mutableStateOf("") }
     var msg by remember { mutableStateOf("") }
 
-    Card(Modifier.fillMaxWidth()) {
+    Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Teal)) {
         Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             CardHeader(Icons.Filled.Wifi, Accent.Teal, "Conectar painel novo (via USB)")
             if (!usbConnected) {

@@ -15,8 +15,8 @@ val LedBlueBright = Color(0xFF4AA3FF)
 val LedBlueDeep = Color(0xFF1565C0)
 
 // ===== TEMA ESCURO (principal) =====
-val DarkPrimary = Color(0xFF4AA3FF)
-val DarkOnPrimary = Color(0xFF042138)
+val DarkPrimary = Color(0xFF7FB2F2)   // azul pastel (botões/acentos) — suave, sem berrar
+val DarkOnPrimary = Color(0xFF06192B)
 val DarkPrimaryContainer = Color(0xFF124A7C)
 val DarkOnPrimaryContainer = Color(0xFFD3E8FF)
 val DarkSecondary = Color(0xFFA7B7C9)

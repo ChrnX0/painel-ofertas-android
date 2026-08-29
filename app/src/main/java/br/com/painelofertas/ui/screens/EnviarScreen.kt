@@ -1,5 +1,6 @@
 package br.com.painelofertas.ui.screens
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -14,10 +15,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -28,6 +31,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,14 +47,19 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import br.com.painelofertas.net.PanelLink
 import br.com.painelofertas.net.UdpLink
+import br.com.painelofertas.ui.components.Accent
+import br.com.painelofertas.ui.components.AccentOutlinedButton
 import br.com.painelofertas.ui.components.Appear
 import br.com.painelofertas.ui.components.ButtonShape
+import br.com.painelofertas.ui.components.CardHeader
 import br.com.painelofertas.ui.components.MonoText
 import br.com.painelofertas.ui.components.SectionLabel
+import br.com.painelofertas.ui.components.accentCardColors
 import br.com.painelofertas.ui.rememberContainer
 import br.com.painelofertas.ui.vm.AppViewModel
 import br.com.painelofertas.ui.vm.SendViewModel
@@ -68,6 +77,8 @@ fun EnviarScreen() {
     var albumSel by remember { mutableStateOf(albuns.firstOrNull() ?: "") }
     var ip by remember { mutableStateOf("") }
     var usarUsb by remember { mutableStateOf(false) }
+    var usarSenha by remember { mutableStateOf(container.settings.useTxPassword) }
+    var senhaTx by remember { mutableStateOf(container.settings.txPassword) }
 
     // fluxo "Salvar e enviar": pré-seleciona o álbum salvo no editor
     LaunchedEffect(Unit) { nav.consumePendingSend()?.let { albumSel = it } }
@@ -98,7 +109,7 @@ fun EnviarScreen() {
 
         // ===== PASSO 1 — Álbum =====
         Appear(delayMillis = 50) {
-            Card(Modifier.fillMaxWidth()) {
+            Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Blue)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     StepHeader(1, "Qual álbum enviar")
                     if (albuns.isEmpty()) {
@@ -144,7 +155,7 @@ fun EnviarScreen() {
 
         // ===== PASSO 2 — Destino =====
         Appear(delayMillis = 100) {
-            Card(Modifier.fillMaxWidth()) {
+            Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Teal)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     StepHeader(2, "Para onde")
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -179,6 +190,26 @@ fun EnviarScreen() {
             }
         }
 
+        // ===== Segurança (opcional) — movida de Config =====
+        Appear(delayMillis = 125) {
+            Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Rose)) {
+                Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                        CardHeader(Icons.Filled.Lock, Accent.Rose, "Enviar com senha")
+                        Switch(usarSenha, { usarSenha = it; container.settings.useTxPassword = it })
+                    }
+                    androidx.compose.animation.AnimatedVisibility(usarSenha) {
+                        OutlinedTextField(
+                            senhaTx, { senhaTx = it; container.settings.txPassword = it },
+                            label = { Text("Senha (numérica)") }, singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
+        }
+
         // ===== PASSO 3 — Ações =====
         Appear(delayMillis = 150) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -192,10 +223,10 @@ fun EnviarScreen() {
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                 ) { Icon(Icons.AutoMirrored.Filled.Send, null, Modifier.size(18.dp)); Spacer(Modifier.size(8.dp)); Text("Enviar para o painel") }
 
-                OutlinedButton(
+                AccentOutlinedButton(
                     onClick = { linkAtual()?.let { vm.receber(container, it, viaUsb = usarUsb) } },
                     enabled = !busy && temDestino,
-                    shape = ButtonShape,
+                    accent = Accent.Green,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Icon(Icons.Filled.Download, null, Modifier.size(18.dp)); Spacer(Modifier.size(8.dp)); Text("Receber (ler o que está no painel)") }
             }

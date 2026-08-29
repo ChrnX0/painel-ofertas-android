@@ -8,6 +8,22 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.29.0] — 2026-08-29 · `versionCode 31`
+
+Reorganização de abas + passe de cor pastel (retorno do cliente).
+
+### Alterado
+- **Organização das abas** (mais lógica): **Segurança de transmissão** foi de Config
+  para **Enviar** (é sobre o envio); **Diagnóstico do dispositivo** foi de Config para
+  **Painéis** (é sobre o aparelho conectado). Config fica só com Tema, Cor do LED,
+  Efeito, Sobre e o autoteste do protocolo
+- **Cor pastel espalhada**: azul primário do tema escuro suavizado; **banho leve de
+  cor** nos cartões (`accentCardColors`) e **botões coloridos por função**
+  (Sincronizar/Ligar/Receber verde, Limpar/Desligar rosa, Identificar âmbar) — via
+  `AccentButton`/`AccentOutlinedButton`. Colorido, porém suave
+
+---
+
 ## [0.28.0] — 2026-08-29 · `versionCode 30`
 
 Continuação do retorno do cliente: config por painel + paleta pastel.

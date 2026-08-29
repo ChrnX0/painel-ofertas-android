@@ -56,8 +56,8 @@ import androidx.compose.material.icons.filled.Palette
 import br.com.painelofertas.protocol.BinaryCodec
 import br.com.painelofertas.ui.components.Accent
 import br.com.painelofertas.ui.components.Appear
-import br.com.painelofertas.ui.components.ButtonShape
 import br.com.painelofertas.ui.components.CardHeader
+import br.com.painelofertas.ui.components.accentCardColors
 import br.com.painelofertas.ui.components.MonoText
 import br.com.painelofertas.ui.components.SectionLabel
 import br.com.painelofertas.ui.components.SegChoice
@@ -70,21 +70,11 @@ private val EFEITOS = listOf("Padrão", "Pisca / Inverte", "Pisca / Padrão")
 @Composable
 fun ConfigScreen() {
     val container = rememberContainer()
-    val usbConnected by container.usb.connected.collectAsState()
-    val usbInfo by container.usb.info.collectAsState()
-    val paineis by container.panels.panels.collectAsState()
     val themeMode by container.settings.themeMode.collectAsState()
     val ledColor by container.settings.ledColor.collectAsState()
     val scroll = rememberScrollState()
-    val scope = rememberCoroutineScope()
-
-    var probing by remember { mutableStateOf(false) }
-    var probe by remember { mutableStateOf<WifiModuleConfigurator.DeviceProbe?>(null) }
-    var probeMsg by remember { mutableStateOf("") }
 
     var efeito by remember { mutableIntStateOf(container.settings.effectMode) }
-    var usarSenha by remember { mutableStateOf(container.settings.useTxPassword) }
-    var senha by remember { mutableStateOf(container.settings.txPassword) }
 
     Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(16.dp)) {
         Appear {
@@ -94,7 +84,7 @@ fun ConfigScreen() {
             }
         }
         Appear(delayMillis = 50) {
-            Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            Card(Modifier.fillMaxWidth().padding(top = 8.dp), colors = accentCardColors(Accent.Lilac)) {
                 Column(Modifier.padding(16.dp)) {
                     CardHeader(Icons.Filled.Palette, Accent.Lilac, "Tema do aplicativo", "Aparência do app no celular — não altera o painel.")
                     SegChoice(
@@ -106,143 +96,60 @@ fun ConfigScreen() {
             }
         }
 
-        Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            Column(Modifier.padding(16.dp)) {
-                CardHeader(Icons.Filled.Lightbulb, Accent.Amber, "Prévia — cor do LED")
-                Row(
-                    Modifier.horizontalScroll(rememberScrollState()).padding(top = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    LedColors.forEachIndexed { i, c ->
-                        FilterChip(
-                            selected = ledColor == i,
-                            onClick = { container.settings.setLedColor(i) },
-                            label = {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                ) {
-                                    Box(Modifier.size(13.dp).clip(CircleShape).background(c))
-                                    Text(LedColorNames[i])
-                                }
-                            },
-                        )
+        Appear(delayMillis = 90) {
+            Card(Modifier.fillMaxWidth().padding(top = 8.dp), colors = accentCardColors(Accent.Amber)) {
+                Column(Modifier.padding(16.dp)) {
+                    CardHeader(Icons.Filled.Lightbulb, Accent.Amber, "Prévia — cor do LED")
+                    Row(
+                        Modifier.horizontalScroll(rememberScrollState()).padding(top = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        LedColors.forEachIndexed { i, c ->
+                            FilterChip(
+                                selected = ledColor == i,
+                                onClick = { container.settings.setLedColor(i) },
+                                label = {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    ) {
+                                        Box(Modifier.size(13.dp).clip(CircleShape).background(c))
+                                        Text(LedColorNames[i])
+                                    }
+                                },
+                            )
+                        }
                     }
-                }
-                Text(
-                    "Deixe igual à cor do seu painel real — a prévia imita o que aparece nele.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 6.dp),
-                )
-            }
-        }
-
-        Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            Column(Modifier.padding(16.dp)) {
-                CardHeader(Icons.Filled.AutoAwesome, Accent.Teal, "Efeito global das telas", "Como as telas trocam no painel. (Rede e IP do aparelho agora ficam na aba Painéis.)")
-                Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    EFEITOS.forEachIndexed { i, nome ->
-                        FilterChip(
-                            selected = efeito == i,
-                            onClick = { efeito = i; container.settings.effectMode = i },
-                            label = { Text(nome, style = MaterialTheme.typography.labelSmall) },
-                        )
-                    }
-                }
-            }
-        }
-
-        Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            Column(Modifier.padding(16.dp)) {
-                CardHeader(Icons.Filled.Lock, Accent.Rose, "Segurança de transmissão")
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text("Enviar com senha")
-                    Switch(checked = usarSenha, onCheckedChange = { usarSenha = it; container.settings.useTxPassword = it })
-                }
-                if (usarSenha) {
-                    OutlinedTextField(
-                        value = senha,
-                        onValueChange = { senha = it; container.settings.txPassword = it },
-                        label = { Text("Senha (numérica)") }, singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                    Text(
+                        "Deixe igual à cor do seu painel real — a prévia imita o que aparece nele.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp),
                     )
                 }
             }
         }
 
-        Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Diagnóstico do dispositivo", style = MaterialTheme.typography.titleMedium)
-
-                val info = usbInfo
-                if (usbConnected && info != null) {
-                    Text("● Conectado por USB", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF34D399))
-                    MonoText("chip: ${chipName(info.vendorId)}", size = 11)
-                    MonoText("VID 0x%04X · PID 0x%04X".format(info.vendorId, info.productId), size = 11)
-                    info.manufacturer?.takeIf { it.isNotBlank() }?.let { MonoText("fabricante: $it", size = 11) }
-                    info.product?.takeIf { it.isNotBlank() }?.let { MonoText("produto: $it", size = 11) }
-                    info.serial?.takeIf { it.isNotBlank() }?.let { MonoText("série: $it", size = 11) }
-                } else {
-                    Text("Nenhum painel conectado por USB.",
-                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-
-                Button(onClick = { container.usb.ensureConnected() }, shape = ButtonShape) {
-                    Text("Procurar dispositivo USB")
-                }
-
-                if (usbConnected) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    OutlinedButton(
-                        enabled = !probing,
-                        shape = ButtonShape,
-                        onClick = {
-                            val link = container.usb.link.value ?: return@OutlinedButton
-                            probing = true; probeMsg = "Consultando o módulo…"; probe = null
-                            scope.launch {
-                                val r = runCatching { WifiModuleConfigurator(link).probe() }.getOrNull()
-                                probe = r
-                                probeMsg = if (r == null || (r.firmware.isEmpty() && r.mac.isBlank()))
-                                    "Sem resposta do módulo (verifique o cabo/OTG)." else ""
-                                probing = false
-                            }
-                        },
-                    ) { Text(if (probing) "Consultando…" else "Ler firmware & MAC do módulo Wi-Fi") }
-
-                    probe?.let { r ->
-                        if (r.mac.isNotBlank()) MonoText("MAC: ${r.mac}", size = 11, color = MaterialTheme.colorScheme.primary)
-                        if (r.ip.isNotBlank()) MonoText("IP: ${r.ip}", size = 11)
-                        r.firmware.forEach { MonoText(it, size = 11) }
+        Appear(delayMillis = 130) {
+            Card(Modifier.fillMaxWidth().padding(top = 8.dp), colors = accentCardColors(Accent.Teal)) {
+                Column(Modifier.padding(16.dp)) {
+                    CardHeader(Icons.Filled.AutoAwesome, Accent.Teal, "Efeito global das telas", "Como as telas trocam no painel.")
+                    Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        EFEITOS.forEachIndexed { i, nome ->
+                            FilterChip(
+                                selected = efeito == i,
+                                onClick = { efeito = i; container.settings.effectMode = i },
+                                label = { Text(nome, style = MaterialTheme.typography.labelSmall) },
+                            )
+                        }
                     }
-                    if (probeMsg.isNotBlank()) {
-                        Text(probeMsg, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-
-                paineis.firstOrNull()?.let { p ->
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    MonoText("memória livre (${p.name}): ${p.freeMemory} bytes", size = 11)
                 }
             }
         }
 
-        Appear(delayMillis = 100) { ProtocolCheckCard() }
-        Appear(delayMillis = 150) { SobreCard() }
+        Appear(delayMillis = 170) { ProtocolCheckCard() }
+        Appear(delayMillis = 210) { SobreCard() }
     }
-}
-
-/** Nome do fabricante a partir do VID USB (os mais comuns em pontes seriais/HID). */
-private fun chipName(vid: Int): String = when (vid) {
-    0x04D8 -> "Microchip (ponte USB / PIC)"
-    0x10C4 -> "Silicon Labs (CP210x)"
-    0x1A86 -> "WCH (CH340 / CH9102)"
-    0x0403 -> "FTDI"
-    else -> "VID 0x%04X".format(vid)
 }
 
 /** Tela "Sobre" com a marca da LedBlock (fabricante do painel). */
