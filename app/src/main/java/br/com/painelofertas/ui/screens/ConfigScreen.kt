@@ -76,8 +76,6 @@ fun ConfigScreen() {
     var probeMsg by remember { mutableStateOf("") }
 
     var efeito by remember { mutableIntStateOf(container.settings.effectMode) }
-    var localIp by remember { mutableStateOf(container.settings.localIp) }
-    var dhcp by remember { mutableStateOf(container.settings.dhcp) }
     var usarSenha by remember { mutableStateOf(container.settings.useTxPassword) }
     var senha by remember { mutableStateOf(container.settings.txPassword) }
 
@@ -140,9 +138,15 @@ fun ConfigScreen() {
         }
 
         Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            Column(Modifier.padding(12.dp)) {
+            Column(Modifier.padding(16.dp)) {
                 Text("Efeito global das telas", style = MaterialTheme.typography.titleMedium)
-                Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    "Como as telas trocam no painel. (Rede e IP do aparelho agora ficam na aba Painéis.)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+                Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     EFEITOS.forEachIndexed { i, nome ->
                         FilterChip(
                             selected = efeito == i,
@@ -150,20 +154,6 @@ fun ConfigScreen() {
                             label = { Text(nome, style = MaterialTheme.typography.labelSmall) },
                         )
                     }
-                }
-                OutlinedTextField(
-                    value = localIp,
-                    onValueChange = { localIp = it; container.settings.localIp = it },
-                    label = { Text("IP local do aparelho") }, singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                )
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text("Usar DHCP no painel")
-                    Switch(checked = dhcp, onCheckedChange = { dhcp = it; container.settings.dhcp = it })
                 }
             }
         }

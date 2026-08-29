@@ -8,6 +8,29 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.27.0] — 2026-08-29 · `versionCode 29`
+
+Reorganização de usabilidade a partir do retorno do cliente + passe de cor e movimento.
+
+### Adicionado
+- **Histórico de painéis pareados**: os painéis agora são **persistidos**
+  (`PairedPanelsStore` em SharedPreferences/JSON) — reaparecem ao abrir o app mesmo
+  **offline**, com **chip de status colorido** e marca de **"visto há …"**
+- **Cor nos cartões**: cabeçalhos com **ícone colorido** (`CardHeader`) — rede em azul,
+  senha em âmbar, painel em verde
+- **Mais animação**: `animateContentSize` nos cartões que expandem (Textos,
+  Complementos, Wi-Fi, Senha)
+
+### Alterado
+- **Rede do aparelho** (IP do celular + DHCP) **movida de Config para a aba Painéis**,
+  onde os painéis são gerenciados
+- **Enviar**: passo 1 renomeado para **"Qual álbum enviar"** com a legenda "Os álbuns
+  que você salvou na aba Editar" — deixa claro de onde vêm os álbuns
+- Painéis lembrados começam "bem offline" para o liveness não os marcar como
+  "instável" antes de um `STATUS` real
+
+---
+
 ## [0.25.0 – 0.26.0] — 2026-08-29 · `versionCode 27–28`
 
 Rodada de refino de UX das 5 telas (padrão One UI, com movimento) + fechamento de

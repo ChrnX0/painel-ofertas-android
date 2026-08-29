@@ -90,3 +90,49 @@ class SettingsStore(context: Context) {
         _ledColor.value = value
     }
 }
+
+/**
+ * Persiste os painéis conhecidos (histórico do que foi pareado) em
+ * SharedPreferences como JSON. Guarda só os campos estáveis — status e
+ * telemetria são recalculados pela descoberta a cada sessão.
+ */
+class PairedPanelsStore(context: Context) : PanelStore {
+
+    private val prefs = context.getSharedPreferences("painel_paineis", Context.MODE_PRIVATE)
+
+    override fun load(): List<Panel> {
+        val raw = prefs.getString("panels", null) ?: return emptyList()
+        return runCatching {
+            val arr = org.json.JSONArray(raw)
+            (0 until arr.length()).map { i ->
+                val o = arr.getJSONObject(i)
+                Panel(
+                    id = o.optString("id"),
+                    name = o.optString("name"),
+                    ip = o.optString("ip"),
+                    brightness = o.optInt("brightness", 100),
+                    sensorAuto = o.optBoolean("sensorAuto", false),
+                    expectedCrc = o.optInt("expectedCrc", 0),
+                    lastSeen = o.optLong("lastSeen", 0),
+                    status = PanelStatus.OFFLINE,
+                    // Começa "bem offline" para o liveness NÃO promovê-lo a
+                    // "instável" antes de um STATUS real chegar.
+                    missedBeats = PanelRepository.SINAL_VERMELHO + 1,
+                )
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    override fun save(panels: List<Panel>) {
+        val arr = org.json.JSONArray()
+        panels.forEach { p ->
+            arr.put(
+                org.json.JSONObject()
+                    .put("id", p.id).put("name", p.name).put("ip", p.ip)
+                    .put("brightness", p.brightness).put("sensorAuto", p.sensorAuto)
+                    .put("expectedCrc", p.expectedCrc).put("lastSeen", p.lastSeen),
+            )
+        }
+        prefs.edit().putString("panels", arr.toString()).apply()
+    }
+}

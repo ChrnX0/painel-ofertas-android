@@ -1,5 +1,6 @@
 package br.com.painelofertas.ui.screens
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -23,8 +24,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Router
 import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -66,6 +70,7 @@ import br.com.painelofertas.net.LocalIp
 import br.com.painelofertas.net.UdpLink
 import br.com.painelofertas.ui.components.Appear
 import br.com.painelofertas.ui.components.ButtonShape
+import br.com.painelofertas.ui.components.CardHeader
 import br.com.painelofertas.ui.components.EmptyState
 import br.com.painelofertas.ui.components.MonoText
 import br.com.painelofertas.ui.components.SectionLabel
@@ -79,7 +84,7 @@ fun PaineisScreen() {
     val scope = rememberCoroutineScope()
     val panels by container.panels.panels.collectAsState()
     val usbConnected by container.usb.connected.collectAsState()
-    val localIp by remember { mutableStateOf(container.settings.localIp.ifBlank { LocalIp.detect() ?: "" }) }
+    var localIp by remember { mutableStateOf(container.settings.localIp.ifBlank { LocalIp.detect() ?: "" }) }
     val scanning by container.discovery.scanning.collectAsState()
 
     // Auto-conectar: ao abrir a aba, re-anuncia na rede (painéis na mesma rede aparecem sozinhos).
@@ -144,8 +149,26 @@ fun PaineisScreen() {
         }
 
         HorizontalDivider(Modifier.padding(vertical = 4.dp))
-        Appear { WifiConfigCard(usbConnected, localIp, container, scope) }
-        Appear(delayMillis = 60) { PanelPasswordCard(usbConnected, container, scope) }
+        Appear { RedeAparelhoCard(localIp) { localIp = it; container.settings.localIp = it } }
+        Appear(delayMillis = 40) { WifiConfigCard(usbConnected, localIp, container, scope) }
+        Appear(delayMillis = 80) { PanelPasswordCard(usbConnected, container, scope) }
+    }
+}
+
+/** Rede do celular (movido de Config): IP do aparelho + DHCP do painel. */
+@Composable
+private fun RedeAparelhoCard(localIp: String, onIp: (String) -> Unit) {
+    val container = rememberContainer()
+    var dhcp by remember { mutableStateOf(container.settings.dhcp) }
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            CardHeader(Icons.Filled.Router, AccentBlue, "Rede do aparelho", "Como o painel encontra este celular na rede.")
+            OutlinedTextField(localIp, onIp, label = { Text("IP deste celular") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Painel usa DHCP", style = MaterialTheme.typography.bodyLarge)
+                Switch(dhcp, { dhcp = it; container.settings.dhcp = it })
+            }
+        }
     }
 }
 
@@ -174,8 +197,8 @@ private fun PanelPasswordCard(
     }
 
     Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Senha do painel (via USB)", style = MaterialTheme.typography.titleMedium)
+        Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            CardHeader(Icons.Filled.Lock, AccentAmber, "Senha do painel (via USB)")
             if (!usbConnected) {
                 Text(
                     "Conecte por USB para definir ou remover a senha de transmissão exigida ao enviar.",
@@ -243,25 +266,19 @@ private fun PanelCard(
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
 
-            // status + nome + excluir
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // pulso só é "visível" quando online; a animação é sempre criada
-                // (chamadas de composição não podem ser condicionais).
-                val pulseAlpha by rememberInfiniteTransition(label = "live").animateFloat(
-                    1f, 0.4f, infiniteRepeatable(tween(1300), RepeatMode.Reverse), label = "liveDot",
-                )
-                val dotAlpha = if (p.status == PanelStatus.ONLINE) pulseAlpha else 1f
-                Box(
-                    Modifier.size(11.dp).clip(CircleShape).background(statusColor(p.status).copy(alpha = dotAlpha))
-                        .semantics { contentDescription = "Status: ${statusLabel(p.status)}" },
-                )
-                OutlinedTextField(nome, { nome = it }, label = { Text("Nome do painel") }, singleLine = true, modifier = Modifier.weight(1f))
+            // status (chip colorido) + excluir
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                StatusChip(p.status)
                 IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, "Remover da lista", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
+            OutlinedTextField(nome, { nome = it }, label = { Text("Nome do painel") }, singleLine = true, modifier = Modifier.fillMaxWidth())
 
             SyncBadge(p.syncState)
 
             MonoText("IP ${p.ip} · livre ${p.freeMemory} B · CRC 0x%04X".format(p.crcPanel), size = 11)
+            if (p.status != PanelStatus.ONLINE && p.lastSeen > 0) {
+                MonoText("${statusLabel(p.status)} · visto ${agoText(p.lastSeen)}", size = 10, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
 
             // brilho + sensor de luz
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -291,6 +308,26 @@ private fun PanelCard(
                 OutlinedButton(onClick = { onRename(nome) }, shape = ButtonShape) { Text("Renomear") }
             }
         }
+    }
+}
+
+/** Chip de status colorido (online/instável/offline/USB), com bolinha que pulsa se online. */
+@Composable
+private fun StatusChip(status: PanelStatus) {
+    val color = statusColor(status)
+    val pulseAlpha by rememberInfiniteTransition(label = "live").animateFloat(
+        1f, 0.4f, infiniteRepeatable(tween(1300), RepeatMode.Reverse), label = "liveDot",
+    )
+    val dotAlpha = if (status == PanelStatus.ONLINE) pulseAlpha else 1f
+    Row(
+        Modifier.clip(RoundedCornerShape(50)).background(color.copy(alpha = 0.15f))
+            .padding(horizontal = 10.dp, vertical = 5.dp)
+            .semantics { contentDescription = "Status: ${statusLabel(status)}" },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(Modifier.size(8.dp).clip(CircleShape).background(color.copy(alpha = dotAlpha)))
+        Text(statusLabel(status), style = MaterialTheme.typography.labelMedium, color = color, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -324,8 +361,8 @@ private fun WifiConfigCard(
     var msg by remember { mutableStateOf("") }
 
     Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Wi-Fi do painel (via USB)", style = MaterialTheme.typography.titleMedium)
+        Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            CardHeader(Icons.Filled.Wifi, AccentBlue, "Wi-Fi do painel (via USB)")
             if (!usbConnected) {
                 Text(
                     "Conecte o painel por cabo USB (OTG) para configurar em qual rede Wi-Fi ele entra.",
@@ -374,11 +411,26 @@ private fun WifiConfigCard(
     }
 }
 
+// Acentos de cor por área funcional (rede = azul, segurança = âmbar).
+private val AccentBlue = Color(0xFF3B9EFF)
+private val AccentAmber = Color(0xFFFBBF24)
+
 private fun statusColor(s: PanelStatus): Color = when (s) {
     PanelStatus.ONLINE -> Color(0xFF34D399)
     PanelStatus.DEGRADED -> Color(0xFFFB8C00)
     PanelStatus.OFFLINE -> Color(0xFF7A8699)
     PanelStatus.USB -> Color(0xFF3B9EFF)
+}
+
+/** Texto relativo de "visto por último" (para o histórico de painéis). */
+private fun agoText(lastSeen: Long): String {
+    val diff = System.currentTimeMillis() - lastSeen
+    if (diff < 60_000) return "agora há pouco"
+    val min = diff / 60_000
+    if (min < 60) return "há $min min"
+    val h = min / 60
+    if (h < 24) return "há $h h"
+    return "há ${h / 24} d"
 }
 
 private fun statusLabel(s: PanelStatus): String = when (s) {

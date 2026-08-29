@@ -2,6 +2,7 @@ package br.com.painelofertas.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
@@ -83,6 +84,7 @@ import br.com.painelofertas.render.OfertaSpec
 import br.com.painelofertas.render.PanelRenderer
 import br.com.painelofertas.ui.components.Appear
 import br.com.painelofertas.ui.components.ButtonShape
+import br.com.painelofertas.ui.components.CardHeader
 import br.com.painelofertas.ui.components.LedBezel
 import br.com.painelofertas.ui.components.MonoText
 import br.com.painelofertas.ui.components.PanelPreview
@@ -345,6 +347,8 @@ private fun SequenciaCard(
     }
 }
 
+private val AccentGreen = androidx.compose.ui.graphics.Color(0xFF34D399)
+
 /** Ações que falam com o painel físico: sincronizar a sequência e limpar tudo. */
 @Composable
 private fun PainelCard(
@@ -354,9 +358,9 @@ private fun PainelCard(
     onLimpar: () -> Unit,
 ) {
     Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionLabel("Painel", Modifier.weight(1f))
+        Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                CardHeader(Icons.Filled.Sync, AccentGreen, "Painel")
                 if (busy) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
             }
             Text(
@@ -536,7 +540,7 @@ private fun OfeForm(draft: FrameDraft.Ofe, onChange: (FrameDraft.Ofe) -> Unit) {
 
         // === TEXTOS (cabeçalho/título/subtítulo) ===
         Card {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 SectionLabel("Textos")
                 // cabeçalho OU (título + subtítulo) — excludentes, igual ao painel
                 androidx.compose.animation.AnimatedVisibility(!s.subtituloAtivo) {
@@ -586,7 +590,7 @@ private fun OfeForm(draft: FrameDraft.Ofe, onChange: (FrameDraft.Ofe) -> Unit) {
 
         // === MAIS CAMPOS (medida / auxiliar / rodapé) — colapsável ===
         Card {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(
                     Modifier.fillMaxWidth().clickable { maisCampos = !maisCampos },
                     verticalAlignment = Alignment.CenterVertically,

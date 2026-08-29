@@ -3,6 +3,7 @@ package br.com.painelofertas
 import android.content.Context
 import br.com.painelofertas.data.AlbumStore
 import br.com.painelofertas.data.Panel
+import br.com.painelofertas.data.PairedPanelsStore
 import br.com.painelofertas.data.PanelRepository
 import br.com.painelofertas.data.ScheduleStore
 import br.com.painelofertas.data.SettingsStore
@@ -35,7 +36,7 @@ class AppContainer(context: Context) {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     val settings = SettingsStore(context)
-    val panels = PanelRepository()
+    val panels = PanelRepository(PairedPanelsStore(context))
     val albums = AlbumStore(context)
     val schedule = ScheduleStore(context)
     val fonts = FontRepository(context)

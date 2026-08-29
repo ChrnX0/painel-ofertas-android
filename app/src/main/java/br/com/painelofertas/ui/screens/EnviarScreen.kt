@@ -100,7 +100,7 @@ fun EnviarScreen() {
         Appear(delayMillis = 50) {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    StepHeader(1, "O que enviar")
+                    StepHeader(1, "Qual álbum enviar")
                     if (albuns.isEmpty()) {
                         Text(
                             "Nenhum álbum salvo ainda. Vá em Editar, monte as telas e toque em Salvar — depois volte aqui.",
@@ -108,6 +108,11 @@ fun EnviarScreen() {
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     } else {
+                        Text(
+                            "Os álbuns que você salvou na aba Editar:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             albuns.forEach { a ->
                                 FilterChip(selected = albumSel == a, onClick = { albumSel = a }, enabled = !busy, label = { Text(a) })

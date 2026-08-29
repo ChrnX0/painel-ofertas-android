@@ -122,6 +122,27 @@ fun SegChoice(
     }
 }
 
+/**
+ * Cabeçalho de cartão com **ícone colorido** num quadradinho tingido — injeta cor
+ * e hierarquia visual (estilo One UI). O [tint] dá a identidade do cartão
+ * (azul=rede, âmbar=segurança, verde=painel, etc.).
+ */
+@Composable
+fun CardHeader(icon: ImageVector, tint: Color, title: String, subtitle: String? = null, modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Box(
+            Modifier.size(38.dp).clip(RoundedCornerShape(11.dp)).background(tint.copy(alpha = 0.16f)),
+            contentAlignment = Alignment.Center,
+        ) { Icon(icon, null, tint = tint, modifier = Modifier.size(21.dp)) }
+        Column {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            if (subtitle != null) {
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
 /** Rótulo de seção (sobrancelha): mono, maiúsculo, espaçado — ar de instrumento. */
 @Composable
 fun SectionLabel(text: String, modifier: Modifier = Modifier) {

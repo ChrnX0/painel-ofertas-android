@@ -26,6 +26,8 @@ data class Panel(
     val sensorAuto: Boolean = false,
     /** CRC do álbum que deveria estar no painel (0 = desconhecido). */
     val expectedCrc: Int = 0,
+    /** Instante da última vez visto (epoch ms). 0 = nunca nesta instalação. */
+    val lastSeen: Long = 0,
     val status: PanelStatus = PanelStatus.OFFLINE,
     val missedBeats: Int = 0,
 ) {
@@ -38,17 +40,36 @@ data class Panel(
 }
 
 /**
- * Registro em memória dos painéis conhecidos, atualizado pela descoberta/liveness.
- * Substitui o array global `PainelLB[]` do original por um StateFlow observável.
+ * Persistência dos painéis conhecidos — o "histórico do que foi pareado", que
+ * sobrevive a fechar o app. Guarda só os campos estáveis (nome, IP, brilho,
+ * sensor, CRC esperado, última vez visto); status/telemetria são recalculados.
  */
-class PanelRepository {
+interface PanelStore {
+    fun load(): List<Panel>
+    fun save(panels: List<Panel>)
+}
 
-    private val _panels = MutableStateFlow<List<Panel>>(emptyList())
+/**
+ * Registro dos painéis conhecidos, atualizado pela descoberta/liveness e
+ * **persistido** via [store]. Substitui o array global `PainelLB[]` do original
+ * por um StateFlow observável que lembra os painéis entre sessões.
+ */
+class PanelRepository(private val store: PanelStore? = null) {
+
+    private val _panels = MutableStateFlow(store?.load() ?: emptyList())
     val panels: StateFlow<List<Panel>> = _panels
+
+    /** Muda o estado e persiste (para mudanças que valem lembrar). */
+    private fun persistUpdate(block: (List<Panel>) -> List<Panel>) {
+        _panels.update(block)
+        store?.save(_panels.value)
+    }
+
+    private fun now(): Long = System.currentTimeMillis()
 
     /** Cria/atualiza um painel a partir de um STATUS= recebido. */
     fun upsertFromStatus(id: String, ip: String, freeMemory: Int, crc: Int, intensity: Int) {
-        _panels.update { list ->
+        persistUpdate { list ->
             val existing = list.firstOrNull { it.id == id }
             val updated = (existing ?: Panel(id = id, name = "Painel $id", ip = ip, brightness = intensity)).copy(
                 ip = ip,
@@ -57,6 +78,7 @@ class PanelRepository {
                 intensity = intensity,
                 status = PanelStatus.ONLINE,
                 missedBeats = 0,
+                lastSeen = now(),
             )
             if (existing == null) list + updated
             else list.map { if (it.id == id) updated else it }
@@ -65,10 +87,13 @@ class PanelRepository {
 
     /** Marca um painel como visto (reset do contador de falhas). */
     fun markSeen(ip: String) {
-        _panels.update { list -> list.map { if (it.ip == ip) it.copy(missedBeats = 0, status = PanelStatus.ONLINE) else it } }
+        persistUpdate { list -> list.map { if (it.ip == ip) it.copy(missedBeats = 0, status = PanelStatus.ONLINE, lastSeen = now()) else it } }
     }
 
-    /** Incrementa o contador de falhas de todos e reclassifica online/degradado/offline. */
+    /**
+     * Incrementa o contador de falhas de todos e reclassifica online/degradado/
+     * offline. NÃO persiste (status é derivado; evita gravar a cada 3 s).
+     */
     fun tickLiveness() {
         _panels.update { list ->
             list.map { p ->
@@ -84,24 +109,24 @@ class PanelRepository {
     }
 
     fun rename(id: String, newName: String) {
-        _panels.update { list -> list.map { if (it.id == id) it.copy(name = newName) else it } }
+        persistUpdate { list -> list.map { if (it.id == id) it.copy(name = newName) else it } }
     }
 
     fun setBrightness(id: String, value: Int) {
-        _panels.update { list -> list.map { if (it.id == id) it.copy(brightness = value) else it } }
+        persistUpdate { list -> list.map { if (it.id == id) it.copy(brightness = value) else it } }
     }
 
     fun setSensorAuto(id: String, on: Boolean) {
-        _panels.update { list -> list.map { if (it.id == id) it.copy(sensorAuto = on) else it } }
+        persistUpdate { list -> list.map { if (it.id == id) it.copy(sensorAuto = on) else it } }
     }
 
     /** Marca qual CRC esperamos que o painel (por IP) esteja exibindo — chamado após um envio. */
     fun setExpectedCrc(ip: String, crc: Int) {
-        _panels.update { list -> list.map { if (it.ip == ip) it.copy(expectedCrc = crc) else it } }
+        persistUpdate { list -> list.map { if (it.ip == ip) it.copy(expectedCrc = crc) else it } }
     }
 
     fun remove(id: String) {
-        _panels.update { list -> list.filterNot { it.id == id } }
+        persistUpdate { list -> list.filterNot { it.id == id } }
     }
 
     companion object {

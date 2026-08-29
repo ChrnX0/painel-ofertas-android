@@ -52,16 +52,21 @@ Quando o painel de destino já é conhecido, uma **barra de memória** avisa se 
 
 <img src="capturas/03-paineis.png" alt="Aba Painéis no tema escuro" width="320">
 
-Ao abrir, o app **varre a rede sozinho** (agora em ~200 ms, reprocurando a cada
-poucos segundos) — daí o estado "Procurando painéis…". A linha
+A **central dos painéis**. O app **varre a rede sozinho** (agora em ~200 ms,
+reprocurando a cada poucos segundos) — daí o estado "Procurando painéis…". A linha
 **"meu aparelho: 10.0.2.x"** deixa claro que aquele IP é do celular, **não** de um
-painel. Cada painel encontrado vira um card com status (online / instável / offline),
+painel.
+
+Os painéis viram um **histórico persistente**: uma vez pareados, ficam salvos e
+reaparecem ao abrir o app **mesmo offline**, com um **chip de status colorido**
+(online / instável / offline) e a marca de **"visto há …"**. Cada card tem
 **brilho**, **auto-brilho por sensor de luz**, **selo de sincronismo (CRC)** e os
 botões Ligar / Desligar / Identificar / Renomear / **Excluir**.
 
-Abaixo, dois cartões de configuração **via USB** (só ativos com o cabo OTG): o
-**Wi-Fi do painel** (em qual rede ele entra) e a **Senha do painel** (definir/remover
-a senha de transmissão gravada no equipamento).
+Abaixo, três cartões com **ícone colorido**: **Rede do aparelho** (IP do celular +
+DHCP — vindos da antiga aba Config) e, só com o cabo OTG, **Wi-Fi do painel**
+(em qual rede ele entra) e **Senha do painel** (definir/remover a senha de
+transmissão gravada no equipamento).
 
 ---
 
@@ -83,8 +88,9 @@ tarefa**. Útil para trocar as ofertas da manhã e da tarde automaticamente.
 
 **Tema do aplicativo** (Sistema / Claro / Escuro — com o aviso de que muda só a
 aparência do app, não o painel), **cor do LED na prévia** para combinar com o
-painel real, **efeito global das telas**, rede, senha de transmissão e os dois
-diagnósticos (do dispositivo e do protocolo).
+painel real, **efeito global das telas**, senha de transmissão e os dois
+diagnósticos (do dispositivo e do protocolo). *(O IP do aparelho e o DHCP saíram
+daqui para a aba Painéis.)*
 
 ---
 
