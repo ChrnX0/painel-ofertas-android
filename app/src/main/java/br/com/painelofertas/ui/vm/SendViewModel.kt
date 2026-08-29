@@ -29,18 +29,20 @@ class SendViewModel : ViewModel() {
     var status by mutableStateOf("Pronto."); private set
     var progress by mutableStateOf<Float?>(null); private set
 
-    fun enviar(container: AppContainer, albumName: String, link: PanelLink, targetIp: String? = null) {
+    fun enviar(container: AppContainer, albumName: String, link: PanelLink, targetIp: String? = null, viaUsb: Boolean = false) {
         if (busy) return
         val album = container.albums.load(albumName) ?: run { status = "Álbum não encontrado."; return }
         busy = true; progress = 0f; status = "Preparando…"
+        container.connection.transferStarted(viaUsb)
         viewModelScope.launch {
+            var ok = false
             try {
                 val r = album.compile()
                 val codigo =
                     if (container.settings.useTxPassword)
                         Encriptor.code(container.settings.txPassword, System.currentTimeMillis().toString())
                     else IntArray(10)
-                val ok = TransferEngine(link).upload(r.bytes, codigo, album.brilho) { p ->
+                ok = TransferEngine(link).upload(r.bytes, codigo, album.brilho) { p ->
                     when (p) {
                         is TransferProgress.Uploading -> {
                             progress = if (p.total > 0) p.sent.toFloat() / p.total else null
@@ -56,15 +58,18 @@ class SendViewModel : ViewModel() {
             } catch (e: Exception) {
                 status = "❌ Erro: ${e.message ?: e.javaClass.simpleName}"
             } finally {
+                container.connection.transferEnded(viaUsb, ok)
                 busy = false; progress = null
             }
         }
     }
 
-    fun receber(container: AppContainer, link: PanelLink) {
+    fun receber(container: AppContainer, link: PanelLink, viaUsb: Boolean = false) {
         if (busy) return
         busy = true; progress = 0f; status = "Recebendo…"
+        container.connection.transferStarted(viaUsb)
         viewModelScope.launch {
+            var ok = false
             try {
                 val result = TransferEngine(link).download { p ->
                     if (p is TransferProgress.Downloading) {
@@ -77,10 +82,12 @@ class SendViewModel : ViewModel() {
                 val stamp = SimpleDateFormat("dd-MM HH'h'mm", Locale.getDefault()).format(Date())
                 val album = Album(name = "Recebido $stamp", frames = AlbumCodec.parseFrames(blocos))
                 container.albums.save(album)
+                ok = true
                 status = "✅ Recebido e salvo como \"${album.name}\"."
             } catch (e: Exception) {
                 status = "❌ Erro: ${e.message ?: e.javaClass.simpleName}"
             } finally {
+                container.connection.transferEnded(viaUsb, ok)
                 busy = false; progress = null
             }
         }

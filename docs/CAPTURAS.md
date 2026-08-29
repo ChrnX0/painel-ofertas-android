@@ -5,21 +5,31 @@ Telas reais do aplicativo, capturadas em um emulador **Pixel 6 · Android 15 (AP
 > As imagens desta página são capturas do app em execução. Para ver **o que o painel
 > de LED exibe** em cada configuração, veja [EXEMPLOS.md](EXEMPLOS.md).
 
+> **Barra superior** — em todas as telas há duas pílulas de status, **Wi-Fi** e **USB**,
+> cuja bolinha traduz a fase da conexão: 🟢 online · 🟡 procurando (pulsa) ·
+> 🔵 transferindo (pisca) · 🔴 erro · ⚪ desligado.
+
 ---
 
 ## Editar — o editor de ofertas
 
 <img src="capturas/01-editar.png" alt="Aba Editar no tema escuro" width="320">
 
-A tela principal. De cima para baixo:
+A tela principal, organizada em cartões (estilo One UI) que entram em cascata:
 
 - **Prévia de LED ao vivo** dentro da moldura do equipamento (com parafusos e a
   etiqueta LEDBLOCK) — mostra exatamente o que vai para o painel, no tamanho real
 - Leitura técnica em fonte monoespaçada: `PRÉVIA AO VIVO · MEIA · HORIZONTAL · 96×92`
 - **Orientação** em controle segmentado (Horizontal / Vertical)
-- **Modelos** por segmento — um toque preenche cabeçalho, medida e rodapé
-- Interruptores de **Meia tela** e **Habilitar quadro**
-- Campos do produto: Cabeçalho, Título, Subtítulo, Preço, Medida, Auxiliar, Rodapé
+- Cartões agrupados: **Interruptores** (Meia tela / Habilitar quadro) · **Textos**
+  (Cabeçalho, Título, Subtítulo) · **Preço** (destaque `= R$ 9,90`) · **Complementos**
+  colapsável (Medida, Auxiliar, Rodapé)
+- **Sequência** — as telas do álbum como chips; reordenar, duplicar e **excluir a
+  selecionada**; tempo de exibição por tela
+- **Painel** — **Sincronizar** (traz o que já está gravado no painel para a sequência,
+  para inserir/excluir onde quiser) e **Limpar** (apaga todo o painel, com confirmação)
+- **Álbum** — salvar, **Salvar e enviar**, **Exportar/Importar `.alb`** (interop com o
+  app Windows) e abrir álbuns salvos
 
 ---
 
@@ -27,9 +37,11 @@ A tela principal. De cima para baixo:
 
 <img src="capturas/02-enviar.png" alt="Aba Enviar no tema escuro" width="320">
 
-Escolha do álbum, do transporte (**Rede Wi-Fi** ou **USB**) e do painel de destino.
-Durante a transferência aparece um anel de progresso com o percentual; o card
-**Status** registra o que está acontecendo em fonte monoespaçada.
+Reescrita em **passos numerados**: **1 O que enviar** (escolha do álbum) e
+**2 Para onde** (transporte **Rede Wi-Fi** ou **USB** + IP do painel). Os dois botões
+são **Enviar para o painel** e **Receber (ler o que está no painel)**. Durante a
+transferência aparece um anel de progresso com o percentual; o card **Status**
+registra o que está acontecendo em fonte monoespaçada.
 
 Quando o painel de destino já é conhecido, uma **barra de memória** avisa se o
 álbum cabe **antes** de enviar.
@@ -40,13 +52,16 @@ Quando o painel de destino já é conhecido, uma **barra de memória** avisa se 
 
 <img src="capturas/03-paineis.png" alt="Aba Painéis no tema escuro" width="320">
 
-Ao abrir, o app **varre a rede sozinho** — daí o estado "Procurando painéis…".
-Cada painel encontrado vira um card com status (online / instável / offline),
+Ao abrir, o app **varre a rede sozinho** (agora em ~200 ms, reprocurando a cada
+poucos segundos) — daí o estado "Procurando painéis…". A linha
+**"meu aparelho: 10.0.2.x"** deixa claro que aquele IP é do celular, **não** de um
+painel. Cada painel encontrado vira um card com status (online / instável / offline),
 **brilho**, **auto-brilho por sensor de luz**, **selo de sincronismo (CRC)** e os
-botões Ligar / Desligar / Identificar / Renomear.
+botões Ligar / Desligar / Identificar / Renomear / **Excluir**.
 
-Abaixo, a configuração do **Wi-Fi do painel via USB** — que só fica ativa com o
-cabo OTG conectado.
+Abaixo, dois cartões de configuração **via USB** (só ativos com o cabo OTG): o
+**Wi-Fi do painel** (em qual rede ele entra) e a **Senha do painel** (definir/remover
+a senha de transmissão gravada no equipamento).
 
 ---
 
@@ -66,7 +81,8 @@ tarefa**. Útil para trocar as ofertas da manhã e da tarde automaticamente.
 
 <img src="capturas/05-config.png" alt="Aba Config no tema escuro" width="320">
 
-**Tema** (Sistema / Claro / Escuro), **cor do LED na prévia** para combinar com o
+**Tema do aplicativo** (Sistema / Claro / Escuro — com o aviso de que muda só a
+aparência do app, não o painel), **cor do LED na prévia** para combinar com o
 painel real, **efeito global das telas**, rede, senha de transmissão e os dois
 diagnósticos (do dispositivo e do protocolo).
 

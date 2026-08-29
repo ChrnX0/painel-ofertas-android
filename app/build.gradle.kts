@@ -12,8 +12,8 @@ android {
         applicationId = "br.com.painelofertas"
         minSdk = 24
         targetSdk = 35
-        versionCode = 26
-        versionName = "0.24.0"
+        versionCode = 28
+        versionName = "0.26.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

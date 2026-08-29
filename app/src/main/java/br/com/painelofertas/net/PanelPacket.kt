@@ -51,6 +51,30 @@ object PanelPacket {
         return out
     }
 
+    /**
+     * Grava/troca/desliga a senha de transmissão gravada NO painel:
+     * `SENHA=` + 4 bytes. Sem CR (como o APAGAR). Porte de BitBtn10Click.
+     * O painel apaga a memória ao trocar a senha.
+     */
+    fun password(codeBytes: IntArray): ByteArray {
+        val prefix = "SENHA=".encodeToByteArray()
+        val out = ByteArray(prefix.size + codeBytes.size)
+        var i = 0
+        prefix.forEach { out[i++] = it }
+        for (b in codeBytes) out[i++] = (b and 0xFF).toByte()
+        return out
+    }
+
+    /** Os 4 bytes da senha: little-endian do número, ou 255,255,255,255 para desligar. */
+    fun passwordBytes(senha: Long?): IntArray =
+        if (senha == null) intArrayOf(255, 255, 255, 255)
+        else intArrayOf(
+            (senha and 0xFF).toInt(),
+            ((senha shr 8) and 0xFF).toInt(),
+            ((senha shr 16) and 0xFF).toInt(),
+            ((senha shr 24) and 0xFF).toInt(),
+        )
+
     /** Fatia de até 60 bytes começando em [offset] do fluxo completo. */
     fun chunkAt(bytes: IntArray, offset: Int): IntArray {
         val end = minOf(offset + BLOCK_SIZE, bytes.size)

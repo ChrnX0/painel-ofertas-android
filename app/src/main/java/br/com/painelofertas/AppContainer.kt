@@ -7,11 +7,15 @@ import br.com.painelofertas.data.PanelRepository
 import br.com.painelofertas.data.ScheduleStore
 import br.com.painelofertas.data.SettingsStore
 import br.com.painelofertas.discovery.PanelDiscovery
+import br.com.painelofertas.net.ConnectionCenter
 import br.com.painelofertas.net.Encriptor
 import br.com.painelofertas.net.LocalIp
 import br.com.painelofertas.net.PanelLink
 import br.com.painelofertas.net.UdpLink
 import br.com.painelofertas.net.UdpNetwork
+import br.com.painelofertas.protocol.Album
+import br.com.painelofertas.protocol.AlbumCodec
+import br.com.painelofertas.protocol.BinaryCodec
 import br.com.painelofertas.render.FontRepository
 import br.com.painelofertas.transfer.TransferEngine
 import br.com.painelofertas.usb.UsbController
@@ -39,6 +43,7 @@ class AppContainer(context: Context) {
     val udp = UdpNetwork(appScope)
     val discovery = PanelDiscovery(udp, panels, appScope, settings)
     val usb = UsbController(context, appScope)
+    val connection = ConnectionCenter(appScope, panels, discovery, usb)
 
     init {
         appScope.launch(Dispatchers.IO) {
@@ -70,6 +75,24 @@ class AppContainer(context: Context) {
     fun udpLink(panel: Panel): PanelLink = UdpLink(panel.ip, udp)
 
     fun transfer(link: PanelLink) = TransferEngine(link)
+
+    /**
+     * Lê o álbum atualmente gravado no painel (Receber/CARREGAR), para o editor
+     * mostrar o que já está lá e o usuário escolher onde inserir a nova tela.
+     */
+    suspend fun downloadAlbum(link: PanelLink): Album? {
+        val r = TransferEngine(link).download() ?: return null
+        val blocos = BinaryCodec.decompile(r.bytes)
+        return Album(name = "Painel", frames = AlbumCodec.parseFrames(blocos))
+    }
+
+    /** Apaga TODA a memória do painel e reativa vazio (botão "Limpar painel"). */
+    suspend fun clearPanel(link: PanelLink, brilho: Int): Boolean {
+        val codigo =
+            if (settings.useTxPassword) Encriptor.code(settings.txPassword, System.currentTimeMillis().toString())
+            else IntArray(10)
+        return TransferEngine(link).eraseAll(codigo, brilho)
+    }
 
     /** Compila e envia um álbum salvo para um IP (usado pela agenda e por atalhos). */
     suspend fun sendAlbumByName(albumName: String, ip: String, brightness: Int? = null): Boolean {

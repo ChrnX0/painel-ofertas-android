@@ -50,6 +50,10 @@ class UsbLink(
         conn.send(dataReport(offset, chunk)); Unit
     }
 
+    override suspend fun sendPassword(codeBytes: IntArray) = withContext(Dispatchers.IO) {
+        conn.send(passwordReport(codeBytes)); Unit
+    }
+
     fun close() {
         reader.cancel()
         conn.close() // libera a interface e o UsbDeviceConnection (evita vazamento a cada replug)
@@ -64,6 +68,16 @@ class UsbLink(
         var i = 4
         for (c in cmd) { if (i >= body.size - 1) break; body[i++] = (c.code and 0xFF).toByte() }
         body[i] = 13
+        return body
+    }
+
+    /** Report de senha: [CMD_PADRAO=1] + ASCII "SENHA=" + 4 bytes (sem CR). */
+    private fun passwordReport(codeBytes: IntArray): ByteArray {
+        val body = ByteArray(UsbHidManager.REPORT_SIZE)
+        body[2] = CMD_PADRAO.toByte()
+        var i = 4
+        for (c in "SENHA=") { if (i >= body.size) break; body[i++] = (c.code and 0xFF).toByte() }
+        for (b in codeBytes) { if (i >= body.size) break; body[i++] = (b and 0xFF).toByte() }
         return body
     }
 

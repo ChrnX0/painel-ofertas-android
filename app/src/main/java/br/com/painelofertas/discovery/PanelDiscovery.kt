@@ -4,12 +4,16 @@ import br.com.painelofertas.data.PanelRepository
 import br.com.painelofertas.data.PanelStatus
 import br.com.painelofertas.data.SettingsStore
 import br.com.painelofertas.net.Datagram
+import br.com.painelofertas.net.LocalIp
 import br.com.painelofertas.net.PanelMessage
 import br.com.painelofertas.net.PanelPacket
 import br.com.painelofertas.net.UdpNetwork
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 
 /**
  * Descoberta e monitoramento de painéis na rede. Escuta os anúncios (STATUS=,
@@ -23,6 +27,12 @@ class PanelDiscovery(
     private val scope: CoroutineScope,
     private val settings: SettingsStore,
 ) {
+    private val _scanning = MutableStateFlow(false)
+    /** Uma varredura está em curso? (alimenta a bolinha amarela "procurando"). */
+    val scanning: StateFlow<Boolean> = _scanning
+
+    private val scanLock = Mutex()
+
     fun start() {
         scope.launch { udp.incoming.collect { runCatching { handle(it) } } }
         scope.launch {
@@ -30,6 +40,19 @@ class PanelDiscovery(
                 delay(TICK_MS)
                 panels.tickLiveness()
                 pollDegraded()
+            }
+        }
+        // Re-varredura automática enquanto nenhum painel respondeu: se o app abre
+        // antes do painel ligar (ou logo depois), ele é encontrado em segundos —
+        // sem o usuário precisar tocar em "Procurar".
+        scope.launch {
+            while (true) {
+                delay(RESCAN_MS)
+                val online = panels.panels.value.any { it.status == PanelStatus.ONLINE }
+                if (!online) {
+                    val ip = settings.localIp.ifBlank { LocalIp.detect() ?: "" }
+                    if (ip.isNotBlank()) runCatching { scan(ip) }
+                }
             }
         }
     }
@@ -56,21 +79,33 @@ class PanelDiscovery(
     }
 
     /**
-     * Varre a sub-rede /24 do [localIp] anunciando o servidor (SERVIDOR=),
-     * em 5 lotes de ~50 endereços com 10s entre eles (como Timer3 no original).
+     * Varre a sub-rede /24 do [localIp] anunciando o servidor (SERVIDOR=). Ao
+     * contrário do original (5 lotes com 10s de intervalo = até 40s), manda tudo
+     * em rajadas curtas: a /24 inteira sai em ~200ms, então o painel responde
+     * quase de imediato. Serializada por [scanLock] para não sobrepor varreduras.
      */
     suspend fun scan(localIp: String) {
         val prefix = localIp.substringBeforeLast('.', "")
         if (prefix.isEmpty()) return
-        val batches = listOf(1..50, 51..100, 101..150, 151..200, 201..254)
-        for ((i, range) in batches.withIndex()) {
-            for (host in range) udp.send("$prefix.$host", PanelPacket.text("SERVIDOR=$localIp"))
-            if (i < batches.lastIndex) delay(SCAN_BATCH_MS)
+        if (!scanLock.tryLock()) return // já há uma varredura em andamento
+        _scanning.value = true
+        try {
+            for (chunk in (1..254).chunked(SCAN_CHUNK)) {
+                for (host in chunk) udp.send("$prefix.$host", PanelPacket.text("SERVIDOR=$localIp"))
+                delay(SCAN_CHUNK_MS)
+            }
+            delay(SCAN_SETTLE_MS) // deixa as respostas chegarem antes de baixar "procurando"
+        } finally {
+            _scanning.value = false
+            scanLock.unlock()
         }
     }
 
     companion object {
         const val TICK_MS = 3000L
-        const val SCAN_BATCH_MS = 10000L
+        const val RESCAN_MS = 8000L
+        const val SCAN_CHUNK = 32
+        const val SCAN_CHUNK_MS = 25L
+        const val SCAN_SETTLE_MS = 1200L
     }
 }

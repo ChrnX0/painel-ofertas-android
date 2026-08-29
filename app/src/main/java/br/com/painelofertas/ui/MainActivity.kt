@@ -9,11 +9,15 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -55,7 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import br.com.painelofertas.PainelApp
 import br.com.painelofertas.R
-import br.com.painelofertas.ui.components.ConnPill
+import br.com.painelofertas.ui.components.StatusPill
 import br.com.painelofertas.ui.screens.AgendaScreen
 import br.com.painelofertas.ui.screens.ConfigScreen
 import br.com.painelofertas.ui.screens.EditarScreen
@@ -98,7 +102,8 @@ fun PainelOfertasApp() {
     val nav: AppViewModel = viewModel()
     val destinos = Destino.entries
     val atual = nav.selectedTab.coerceIn(0, destinos.lastIndex)
-    val usbConnected by container.usb.connected.collectAsState()
+    val wifiPhase by container.connection.wifi.collectAsState()
+    val usbPhase by container.connection.usb.collectAsState()
 
     // Botão voltar: se não estiver na 1ª aba, volta pra ela em vez de fechar o app.
     BackHandler(enabled = atual != 0) { nav.selectedTab = 0 }
@@ -125,11 +130,14 @@ fun PainelOfertasApp() {
                     }
                 },
                 actions = {
-                    ConnPill(
-                        connected = usbConnected,
-                        label = "USB",
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(end = 12.dp),
-                    )
+                    ) {
+                        StatusPill(phase = wifiPhase, label = "Wi-Fi")
+                        StatusPill(phase = usbPhase, label = "USB")
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -176,7 +184,11 @@ fun PainelOfertasApp() {
         ) {
             AnimatedContent(
                 targetState = atual,
-                transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
+                transitionSpec = {
+                    val dir = if (targetState > initialState) 1 else -1
+                    (fadeIn(tween(280)) + slideInHorizontally(tween(340)) { w -> dir * w / 10 }) togetherWith
+                        (fadeOut(tween(180)) + slideOutHorizontally(tween(340)) { w -> -dir * w / 10 })
+                },
                 modifier = Modifier.align(Alignment.TopCenter).widthIn(max = 700.dp).fillMaxSize(),
                 label = "screen",
             ) { idx ->

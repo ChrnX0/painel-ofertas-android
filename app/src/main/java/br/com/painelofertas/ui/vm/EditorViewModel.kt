@@ -78,6 +78,22 @@ class EditorViewModel : ViewModel() {
         selected = 0
     }
 
+    /**
+     * Sincronizar: coloca as telas lidas do painel ANTES das que o usuário está
+     * montando, para ele ver a sequência real e reordenar/inserir a sua no lugar
+     * certo. Seleciona a 1ª tela do usuário (logo após as do painel).
+     */
+    fun mergePanelFrames(album: Album) {
+        if (album.frames.isEmpty()) return
+        val minhas = frames.toList()
+        frames.clear()
+        album.frames.forEach { frames.add(FrameDraft.fromFrame(it)) }
+        val firstMine = frames.size
+        minhas.forEach { frames.add(it) }
+        if (frames.isEmpty()) frames.add(FrameDraft.Msg())
+        selected = firstMine.coerceIn(0, frames.lastIndex)
+    }
+
     /** Álbum atual (para salvar/enviar), construído a partir dos rascunhos. */
     fun toAlbum(fonts: br.com.painelofertas.render.FontProvider): Album =
         Album(name = nome, frames = frames.map { it.build(fonts, portrait) })

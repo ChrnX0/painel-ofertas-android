@@ -2,6 +2,7 @@ package br.com.painelofertas.usb
 
 import br.com.painelofertas.net.PanelLink
 import br.com.painelofertas.net.PanelMessage
+import br.com.painelofertas.net.PanelPacket
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.coroutineScope
@@ -154,6 +155,16 @@ class WifiModuleConfigurator(private val link: PanelLink) {
         } finally {
             col.cancel(); inbox.close()
         }
+    }
+
+    /**
+     * Grava/troca/desliga a senha de transmissão gravada NO painel. [senha] = número
+     * (0..4294967295) ou null para desligar. Porte de BitBtn10Click: o painel APAGA a
+     * memória ao trocar a senha. Sem ACK documentado no original — retorna após enviar.
+     */
+    suspend fun setPassword(senha: Long?) {
+        link.sendPassword(PanelPacket.passwordBytes(senha))
+        delay(200)
     }
 
     private suspend fun step(inbox: ReceiveChannel<PanelMessage>, cmd: String, timeout: Long = STEP_TIMEOUT): Boolean {

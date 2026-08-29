@@ -340,7 +340,7 @@ preenchido com 0xFF, depois:
 | `DADO=` + bloco | Envia um bloco de 60 bytes |
 | `CARREGAR` | Pede o conteúdo atual (download) |
 | `LIDO=<offset>` | Confirma bloco recebido |
-| `SENHA=` | Grava a senha de transmissão |
+| `SENHA=` + 4 B | Grava/troca/**desliga** a senha do painel. 4 bytes = senha em little-endian, ou `255,255,255,255` para desligar. **Apaga a memória** ao trocar. Via USB (porte de `BitBtn10Click`) |
 
 ### Painel → app
 

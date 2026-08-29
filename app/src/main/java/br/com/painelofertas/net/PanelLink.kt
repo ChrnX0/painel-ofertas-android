@@ -13,6 +13,9 @@ interface PanelLink {
     suspend fun sendText(cmd: String)
     suspend fun sendErase(codigo: IntArray)
     suspend fun sendDataBlock(offset: Int, chunk: IntArray)
+
+    /** Grava/troca/desliga a senha gravada no painel (`SENHA=` + 4 bytes). */
+    suspend fun sendPassword(codeBytes: IntArray)
 }
 
 /** Link via rede (UDP) para o painel em [ip], usando o [UdpNetwork] compartilhado. */
@@ -34,5 +37,9 @@ class UdpLink(
 
     override suspend fun sendDataBlock(offset: Int, chunk: IntArray) {
         network.send(ip, PanelPacket.dataBlock(offset, chunk))
+    }
+
+    override suspend fun sendPassword(codeBytes: IntArray) {
+        network.send(ip, PanelPacket.password(codeBytes))
     }
 }

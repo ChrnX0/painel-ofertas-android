@@ -1,5 +1,10 @@
 package br.com.painelofertas.ui.screens
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -14,12 +19,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -27,6 +40,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -42,12 +56,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import br.com.painelofertas.data.Panel
 import br.com.painelofertas.data.PanelStatus
 import br.com.painelofertas.data.SyncState
 import br.com.painelofertas.net.LocalIp
 import br.com.painelofertas.net.UdpLink
+import br.com.painelofertas.ui.components.Appear
 import br.com.painelofertas.ui.components.ButtonShape
 import br.com.painelofertas.ui.components.EmptyState
 import br.com.painelofertas.ui.components.MonoText
@@ -62,55 +79,150 @@ fun PaineisScreen() {
     val scope = rememberCoroutineScope()
     val panels by container.panels.panels.collectAsState()
     val usbConnected by container.usb.connected.collectAsState()
-    var localIp by remember { mutableStateOf(container.settings.localIp.ifBlank { LocalIp.detect() ?: "" }) }
-    var status by remember { mutableStateOf("") }
+    val localIp by remember { mutableStateOf(container.settings.localIp.ifBlank { LocalIp.detect() ?: "" }) }
+    val scanning by container.discovery.scanning.collectAsState()
 
     // Auto-conectar: ao abrir a aba, re-anuncia na rede (painéis na mesma rede aparecem sozinhos).
     LaunchedEffect(Unit) { container.autoConnect() }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            SectionLabel("Dispositivos")
-            Text("Painéis", style = MaterialTheme.typography.headlineSmall)
-        }
-        Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = localIp, onValueChange = { localIp = it; container.settings.localIp = it },
-                label = { Text("IP local") }, singleLine = true, modifier = Modifier.weight(1f),
-            )
-            Spacer(Modifier.size(8.dp))
-            Button(onClick = {
-                scope.launch { status = "Procurando…"; container.discovery.scan(localIp); status = "Varredura enviada." }
-            }, shape = ButtonShape) { Text("Procurar") }
-        }
-        if (status.isNotBlank()) Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-        if (panels.isEmpty()) {
-            EmptyState(
-                icon = Icons.Filled.Tv,
-                title = "Procurando painéis…",
-                subtitle = "Ao abrir, o app varre a rede sozinho. O painel precisa estar ligado e na mesma rede Wi-Fi. Toque em Procurar para varrer de novo.",
-            )
-        } else {
-            panels.forEach { p ->
-                fun cmd(text: String) = scope.launch { UdpLink(p.ip, container.udp).sendText(text) }
-                PanelCard(
-                    p,
-                    onApply = { v, sensor ->
-                        container.panels.setBrightness(p.id, v)
-                        container.panels.setSensorAuto(p.id, sensor)
-                        cmd("INICIAR=${v + if (sensor) 128 else 0}")
-                    },
-                    onIdentificar = { cmd("INICIAR=228") },
-                    onLigar = { cmd("INICIAR=${p.brightness + if (p.sensorAuto) 128 else 0}") },
-                    onDesligar = { cmd("ONOFF=0") },
-                    onRename = { container.panels.rename(p.id, it) },
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Appear {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        SectionLabel("Dispositivos")
+                        Text("Painéis", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
+                    }
+                    Button(onClick = { scope.launch { container.autoConnect() } }, enabled = !scanning, shape = ButtonShape) {
+                        if (scanning) {
+                            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                            Spacer(Modifier.size(8.dp)); Text("Procurando")
+                        } else {
+                            Icon(Icons.Filled.Refresh, null, Modifier.size(18.dp)); Spacer(Modifier.size(6.dp)); Text("Procurar")
+                        }
+                    }
+                }
+                // Deixa CLARO que este IP é do celular, não do painel (a confusão anterior).
+                MonoText(
+                    "meu aparelho: ${localIp.ifBlank { "—" }}" +
+                        if (scanning) " · varrendo a rede…" else " · ${panels.size} painel(is) na rede",
+                    size = 11,
                 )
             }
         }
 
-        HorizontalDivider(Modifier.padding(vertical = 12.dp))
-        WifiConfigCard(usbConnected, localIp, container, scope)
+        if (panels.isEmpty()) {
+            Appear(delayMillis = 60) {
+                EmptyState(
+                    icon = Icons.Filled.Tv,
+                    title = if (scanning) "Procurando painéis…" else "Nenhum painel ainda",
+                    subtitle = "O app varre a rede sozinho e reprocura a cada poucos segundos. O painel precisa estar ligado e na mesma rede Wi-Fi que o celular.",
+                )
+            }
+        } else {
+            panels.forEachIndexed { i, p ->
+                fun cmd(text: String) = scope.launch { UdpLink(p.ip, container.udp).sendText(text) }
+                Appear(delayMillis = 60 + i * 40) {
+                    PanelCard(
+                        p,
+                        onApply = { v, sensor ->
+                            container.panels.setBrightness(p.id, v)
+                            container.panels.setSensorAuto(p.id, sensor)
+                            cmd("INICIAR=${v + if (sensor) 128 else 0}")
+                        },
+                        onIdentificar = { cmd("INICIAR=228") },
+                        onLigar = { cmd("INICIAR=${p.brightness + if (p.sensorAuto) 128 else 0}") },
+                        onDesligar = { cmd("ONOFF=0") },
+                        onRename = { container.panels.rename(p.id, it) },
+                        onDelete = { container.panels.remove(p.id) },
+                    )
+                }
+            }
+        }
+
+        HorizontalDivider(Modifier.padding(vertical = 4.dp))
+        Appear { WifiConfigCard(usbConnected, localIp, container, scope) }
+        Appear(delayMillis = 60) { PanelPasswordCard(usbConnected, container, scope) }
+    }
+}
+
+/**
+ * Grava/troca/desliga a senha de transmissão NO painel (via USB). Porte de
+ * BitBtn10Click. ⚠️ Trocar a senha APAGA a memória do painel — por isso confirma.
+ */
+@Composable
+private fun PanelPasswordCard(
+    usbConnected: Boolean,
+    container: br.com.painelofertas.AppContainer,
+    scope: kotlinx.coroutines.CoroutineScope,
+) {
+    var senha by remember { mutableStateOf("") }
+    var msg by remember { mutableStateOf("") }
+    var confirmSet by remember { mutableStateOf(false) }
+    var confirmOff by remember { mutableStateOf(false) }
+
+    fun aplicar(valor: Long?) {
+        val link = container.usb.link.value ?: return
+        scope.launch {
+            WifiModuleConfigurator(link).setPassword(valor)
+            msg = if (valor == null) "✅ Senha removida (painel apagado)." else "✅ Senha definida (painel apagado)."
+            senha = ""
+        }
+    }
+
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Senha do painel (via USB)", style = MaterialTheme.typography.titleMedium)
+            if (!usbConnected) {
+                Text(
+                    "Conecte por USB para definir ou remover a senha de transmissão exigida ao enviar.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Text(
+                    "Define, troca ou remove a senha exigida para enviar ao painel. Trocar a senha apaga o conteúdo gravado.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    senha, { senha = it.filter { c -> c.isDigit() }.take(9) },
+                    label = { Text("Nova senha (numérica)") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { confirmSet = true }, enabled = senha.isNotBlank(), shape = ButtonShape) { Text("Definir senha") }
+                    OutlinedButton(
+                        onClick = { confirmOff = true }, shape = ButtonShape,
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    ) { Text("Remover") }
+                }
+                if (msg.isNotBlank()) Text(msg, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+    }
+
+    if (confirmSet) {
+        AlertDialog(
+            onDismissRequest = { confirmSet = false },
+            title = { Text("Definir senha do painel?") },
+            text = { Text("O painel passará a exigir esta senha para receber envios, e o conteúdo atual será apagado.") },
+            confirmButton = { TextButton(onClick = { confirmSet = false; aplicar(senha.toLongOrNull()) }) { Text("Definir") } },
+            dismissButton = { TextButton(onClick = { confirmSet = false }) { Text("Cancelar") } },
+        )
+    }
+    if (confirmOff) {
+        AlertDialog(
+            onDismissRequest = { confirmOff = false },
+            title = { Text("Remover a senha?") },
+            text = { Text("O painel deixará de exigir senha, e o conteúdo atual será apagado.") },
+            confirmButton = { TextButton(onClick = { confirmOff = false; aplicar(null) }) { Text("Remover") } },
+            dismissButton = { TextButton(onClick = { confirmOff = false }) { Text("Cancelar") } },
+        )
     }
 }
 
@@ -122,21 +234,29 @@ private fun PanelCard(
     onLigar: () -> Unit,
     onDesligar: () -> Unit,
     onRename: (String) -> Unit,
+    onDelete: () -> Unit,
 ) {
     var nome by remember(p.id) { mutableStateOf(p.name) }
     var brilho by remember(p.id, p.brightness) { mutableFloatStateOf(p.brightness.toFloat()) }
     var sensor by remember(p.id, p.sensorAuto) { mutableStateOf(p.sensorAuto) }
 
-    Card(Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
 
-            // status + nome
+            // status + nome + excluir
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // pulso só é "visível" quando online; a animação é sempre criada
+                // (chamadas de composição não podem ser condicionais).
+                val pulseAlpha by rememberInfiniteTransition(label = "live").animateFloat(
+                    1f, 0.4f, infiniteRepeatable(tween(1300), RepeatMode.Reverse), label = "liveDot",
+                )
+                val dotAlpha = if (p.status == PanelStatus.ONLINE) pulseAlpha else 1f
                 Box(
-                    Modifier.size(11.dp).background(statusColor(p.status), CircleShape)
+                    Modifier.size(11.dp).clip(CircleShape).background(statusColor(p.status).copy(alpha = dotAlpha))
                         .semantics { contentDescription = "Status: ${statusLabel(p.status)}" },
                 )
                 OutlinedTextField(nome, { nome = it }, label = { Text("Nome do painel") }, singleLine = true, modifier = Modifier.weight(1f))
+                IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, "Remover da lista", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
 
             SyncBadge(p.syncState)
@@ -203,51 +323,54 @@ private fun WifiConfigCard(
     var senha by remember { mutableStateOf("") }
     var msg by remember { mutableStateOf("") }
 
-    Text("Configurar WiFi do painel (via USB)", style = MaterialTheme.typography.titleMedium)
-    if (!usbConnected) {
-        Text("Conecte o painel por USB (OTG) para configurar a rede.",
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        return
-    }
-    Column(Modifier.padding(top = 8.dp)) {
-        OutlinedButton(onClick = {
-            val link = container.usb.link.value ?: return@OutlinedButton
-            scope.launch {
-                msg = "Lendo configuração…"
-                val cfg = WifiModuleConfigurator(link).readConfig()
-                ssids = cfg.ssids
-                ssidSel = cfg.currentSsid
-                msg = "Redes: ${ssids.size}. Rede atual: ${cfg.currentSsid.ifBlank { "—" }}"
-            }
-        }, shape = ButtonShape) { Text("Ler config / escanear redes") }
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Wi-Fi do painel (via USB)", style = MaterialTheme.typography.titleMedium)
+            if (!usbConnected) {
+                Text(
+                    "Conecte o painel por cabo USB (OTG) para configurar em qual rede Wi-Fi ele entra.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                OutlinedButton(onClick = {
+                    val link = container.usb.link.value ?: return@OutlinedButton
+                    scope.launch {
+                        msg = "Lendo configuração…"
+                        val cfg = WifiModuleConfigurator(link).readConfig()
+                        ssids = cfg.ssids
+                        ssidSel = cfg.currentSsid
+                        msg = "Redes: ${ssids.size}. Rede atual: ${cfg.currentSsid.ifBlank { "—" }}"
+                    }
+                }, shape = ButtonShape) { Text("Ler config / escanear redes") }
 
-        if (ssids.isNotEmpty()) {
-            Row(Modifier.horizontalScroll(rememberScrollState()).padding(top = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                ssids.forEach { s ->
-                    FilterChip(selected = ssidSel == s, onClick = { ssidSel = s }, label = { Text(s) })
+                if (ssids.isNotEmpty()) {
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        ssids.forEach { s ->
+                            FilterChip(selected = ssidSel == s, onClick = { ssidSel = s }, label = { Text(s) })
+                        }
+                    }
                 }
+                OutlinedTextField(senha, { senha = it }, label = { Text("Senha da rede") },
+                    singleLine = true, modifier = Modifier.fillMaxWidth())
+                Button(
+                    onClick = {
+                        val link = container.usb.link.value ?: return@Button
+                        scope.launch {
+                            msg = "Entrando na rede…"
+                            val ok = WifiModuleConfigurator(link).join(
+                                ssid = ssidSel, password = senha, localIp = localIp,
+                                dhcp = container.settings.dhcp,
+                            )
+                            msg = if (ok) "✅ Painel configurado na rede." else "❌ Falha ao entrar na rede."
+                        }
+                    },
+                    enabled = ssidSel.isNotBlank(),
+                    shape = ButtonShape,
+                ) { Text("Entrar na rede") }
+                if (msg.isNotBlank()) Text(msg, style = MaterialTheme.typography.bodySmall)
             }
         }
-        OutlinedTextField(senha, { senha = it }, label = { Text("Senha da rede") },
-            singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
-        Button(
-            onClick = {
-                val link = container.usb.link.value ?: return@Button
-                scope.launch {
-                    msg = "Entrando na rede…"
-                    val ok = WifiModuleConfigurator(link).join(
-                        ssid = ssidSel, password = senha, localIp = localIp,
-                        dhcp = container.settings.dhcp,
-                    )
-                    msg = if (ok) "✅ Painel configurado na rede." else "❌ Falha ao entrar na rede."
-                }
-            },
-            enabled = ssidSel.isNotBlank(),
-            shape = ButtonShape,
-            modifier = Modifier.padding(top = 4.dp),
-        ) { Text("Entrar na rede") }
-        if (msg.isNotBlank()) Text(msg, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
     }
 }
 

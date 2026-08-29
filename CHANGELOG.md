@@ -8,6 +8,47 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.25.0 – 0.26.0] — 2026-08-29 · `versionCode 27–28`
+
+Rodada de refino de UX das 5 telas (padrão One UI, com movimento) + fechamento de
+paridade com o app Windows. Testado em emulador Android 15 (claro e escuro).
+
+### Adicionado
+- **Status de conexão na barra**: pílulas **Wi-Fi** e **USB** com bolinha que traduz
+  a fase — 🟢 online · 🟡 procurando (pulsa) · 🔵 transferindo (pisca) · 🔴 erro ·
+  ⚪ desligado (`ConnectionCenter` + `StatusPill`)
+- **Sincronizar com o painel** no editor: lê o que está gravado (Receber) e traz as
+  telas para a sequência, para escolher onde inserir a nova e **excluir as que quiser**
+- **Limpar painel** (com confirmação): apaga toda a memória (`APAGAR`→`INICIAR`)
+- **Senha do painel via USB** (`SENHA=`, porte de `BitBtn10Click`): definir/remover a
+  senha de transmissão gravada no painel — *fechava um gap de paridade*
+- **Exportar/Importar `.alb`** para arquivo externo (SAF) — interop com o app Windows
+  e backup — *fechava um gap de paridade*
+- **Excluir painel** da lista (aba Painéis)
+- Movimento estilo One UI: entradas escalonadas dos cartões e transição direcional
+  entre abas
+
+### Alterado
+- **Descoberta muito mais rápida**: a varredura ia em 5 lotes com 10 s de intervalo
+  (até 40 s); agora manda a /24 em rajadas curtas (~200 ms) e **reprocura sozinha a
+  cada 8 s** até achar. Fim do "achei que travou"
+- **Enviar** reescrita em **passos numerados** (1 O que enviar · 2 Para onde) e o botão
+  virou **"Receber (ler o que está no painel)"**
+- **Painéis**: o IP que confundia agora aparece como **"meu aparelho: …"** (é o celular,
+  não o painel), com botão Procurar animado
+- **Config**: "Tema" → **"Tema do aplicativo"**, com aviso de que não altera o painel
+- Editor agrupado em cartões (Interruptores · Textos · Preço · **Complementos**
+  colapsável)
+
+### Removido
+- Linha de **Modelos** (Açougue/Hortifruti/…) do editor
+
+### Corrigido
+- Sobreposição de textos no cartão "Wi-Fi do painel (via USB)" — o componente assumia
+  estar dentro de uma `Column`, mas a animação de entrada empilha filhos como `Box`
+
+---
+
 ## [0.24.0] — 2026-08-25 · `versionCode 26`
 
 ### Corrigido

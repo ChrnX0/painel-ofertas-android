@@ -1,5 +1,6 @@
 package br.com.painelofertas.ui.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import br.com.painelofertas.net.LinkPhase
 import br.com.painelofertas.ui.theme.Archivo
 import br.com.painelofertas.ui.theme.Mono
 import br.com.painelofertas.ui.theme.PanelBg
@@ -204,31 +206,56 @@ private fun Screw(modifier: Modifier = Modifier) {
     )
 }
 
-/** Pílula de status de conexão (barra superior). */
+/**
+ * Pílula de status de um enlace (barra superior). A cor da bolinha traduz a
+ * [LinkPhase] — verde online, amarelo procurando, azul transferindo, vermelho
+ * erro, cinza desligado — com pulso lento ao procurar e piscada rápida ao
+ * transferir. A cor muda com transição suave (nada "pula").
+ */
 @Composable
-fun ConnPill(connected: Boolean, label: String, modifier: Modifier = Modifier) {
+fun StatusPill(phase: LinkPhase, label: String, modifier: Modifier = Modifier) {
     val cs = MaterialTheme.colorScheme
-    val transition = rememberInfiniteTransition(label = "conn")
+    val target = when (phase) {
+        LinkPhase.ONLINE -> Color(0xFF34D399)
+        LinkPhase.SEARCHING -> Color(0xFFFBBF24)
+        LinkPhase.TRANSFER -> Color(0xFF3B9EFF)
+        LinkPhase.ERROR -> Color(0xFFF87171)
+        LinkPhase.OFFLINE -> cs.outline
+    }
+    val dotColor by animateColorAsState(target, tween(400), label = "pillColor")
+
+    val blinking = phase == LinkPhase.SEARCHING || phase == LinkPhase.TRANSFER
+    val transition = rememberInfiniteTransition(label = "pill")
     val pulse by transition.animateFloat(
         initialValue = 1f,
-        targetValue = 0.35f,
-        animationSpec = infiniteRepeatable(tween(1400), RepeatMode.Reverse),
-        label = "connDot",
+        targetValue = 0.25f,
+        animationSpec = infiniteRepeatable(
+            tween(if (phase == LinkPhase.TRANSFER) 480 else 1300),
+            RepeatMode.Reverse,
+        ),
+        label = "pillDot",
     )
-    val dotColor = if (connected) Color(0xFF34D399) else cs.outline
+    // halo suave quando ativo, para a bolinha "respirar"
+    val glow = if (phase == LinkPhase.ONLINE) 0.5f else if (blinking) pulse * 0.6f else 0f
+
     Row(
         modifier
             .clip(RoundedCornerShape(50))
             .background(cs.surfaceContainerHigh)
             .border(1.dp, cs.outlineVariant, RoundedCornerShape(50))
-            .padding(horizontal = 10.dp, vertical = 5.dp),
+            .padding(horizontal = 9.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Box(
-            Modifier.size(7.dp).clip(CircleShape)
-                .background(dotColor.copy(alpha = if (connected) pulse else 1f)),
-        )
+        Box(contentAlignment = Alignment.Center) {
+            if (glow > 0f) {
+                Box(Modifier.size(13.dp).clip(CircleShape).background(dotColor.copy(alpha = glow * 0.35f)))
+            }
+            Box(
+                Modifier.size(7.dp).clip(CircleShape)
+                    .background(dotColor.copy(alpha = if (blinking) pulse else 1f)),
+            )
+        }
         Text(label, fontFamily = Mono, fontSize = 10.sp, fontWeight = FontWeight.Medium, color = cs.onSurfaceVariant)
     }
 }

@@ -124,6 +124,30 @@ class TransferEngine(private val link: PanelLink) {
         }
     }
 
+    /**
+     * Limpa toda a memória do painel: apaga (esperando `APAGADO`) e reativa vazio
+     * com `INICIAR=<brilho>`, sem enviar nenhum bloco. Recurso novo (o original só
+     * apagava como 1º passo de um envio).
+     */
+    suspend fun eraseAll(codigo: IntArray, brilho: Int, onProgress: (TransferProgress) -> Unit = {}): Boolean = coroutineScope {
+        val inbox = Channel<PanelMessage>(Channel.UNLIMITED)
+        val collector = launch { link.incoming.collect { inbox.trySend(it) } }
+        try {
+            var erased = false
+            for (attempt in 1..ERASE_ATTEMPTS) {
+                link.sendErase(codigo)
+                if (waitFor(inbox, ERASE_TIMEOUT) { it is PanelMessage.Erased } != null) { erased = true; break }
+            }
+            if (!erased) { onProgress(TransferProgress.Failed("Painel não respondeu ao apagar")); return@coroutineScope false }
+            link.sendText("INICIAR=$brilho")
+            onProgress(TransferProgress.Done)
+            true
+        } finally {
+            collector.cancel()
+            inbox.close()
+        }
+    }
+
     private suspend fun waitFor(
         inbox: ReceiveChannel<PanelMessage>,
         timeoutMs: Long,

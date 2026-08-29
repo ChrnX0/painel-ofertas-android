@@ -42,12 +42,14 @@ import androidx.compose.ui.res.painterResource
 import br.com.painelofertas.ui.theme.LedColorNames
 import br.com.painelofertas.ui.theme.LedColors
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.painelofertas.BuildConfig
 import br.com.painelofertas.R
 import br.com.painelofertas.protocol.BinaryCodec
+import br.com.painelofertas.ui.components.Appear
 import br.com.painelofertas.ui.components.ButtonShape
 import br.com.painelofertas.ui.components.MonoText
 import br.com.painelofertas.ui.components.SectionLabel
@@ -80,18 +82,28 @@ fun ConfigScreen() {
     var senha by remember { mutableStateOf(container.settings.txPassword) }
 
     Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(16.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            SectionLabel("Ajustes")
-            Text("Configurações", style = MaterialTheme.typography.headlineSmall)
+        Appear {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                SectionLabel("Ajustes")
+                Text("Configurações", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
+            }
         }
-        Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            Column(Modifier.padding(12.dp)) {
-                Text("Tema", style = MaterialTheme.typography.titleMedium)
-                SegChoice(
-                    listOf("Sistema", "Claro", "Escuro"),
-                    themeMode,
-                    Modifier.padding(top = 8.dp).fillMaxWidth(),
-                ) { container.settings.setThemeMode(it) }
+        Appear(delayMillis = 50) {
+            Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Tema do aplicativo", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Aparência do app no celular — não altera o painel.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                    SegChoice(
+                        listOf("Sistema", "Claro", "Escuro"),
+                        themeMode,
+                        Modifier.padding(top = 10.dp).fillMaxWidth(),
+                    ) { container.settings.setThemeMode(it) }
+                }
             }
         }
 
@@ -234,8 +246,8 @@ fun ConfigScreen() {
             }
         }
 
-        ProtocolCheckCard()
-        SobreCard()
+        Appear(delayMillis = 100) { ProtocolCheckCard() }
+        Appear(delayMillis = 150) { SobreCard() }
     }
 }
 
