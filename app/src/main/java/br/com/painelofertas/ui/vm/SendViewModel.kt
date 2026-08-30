@@ -64,6 +64,51 @@ class SendViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Envia o mesmo álbum para VÁRIOS painéis, um após o outro (o protocolo é
+     * stop-and-wait por painel). Relata o progresso de cada um e um resumo no fim —
+     * o caso real de quem tem vários painéis na mesma loja.
+     */
+    fun enviarParaVarios(container: AppContainer, albumName: String, ips: List<String>) {
+        if (busy || ips.isEmpty()) return
+        val album = container.albums.load(albumName) ?: run { status = "Álbum não encontrado."; return }
+        busy = true; progress = 0f
+        container.connection.transferStarted(false)
+        viewModelScope.launch {
+            var okCount = 0
+            val falhas = mutableListOf<String>()
+            try {
+                val r = album.compile()
+                ips.forEachIndexed { idx, ip ->
+                    status = "Enviando para ${idx + 1} de ${ips.size} (${ip})…"
+                    val codigo =
+                        if (container.settings.useTxPassword)
+                            Encriptor.code(container.settings.txPassword, System.currentTimeMillis().toString())
+                        else IntArray(10)
+                    val ok = runCatching {
+                        TransferEngine(container.udpLinkByIp(ip)).upload(r.bytes, codigo, album.brilho) { p ->
+                            if (p is TransferProgress.Uploading && p.total > 0) {
+                                val doPainel = p.sent.toFloat() / p.total
+                                progress = (idx + doPainel) / ips.size
+                            }
+                        }
+                    }.getOrDefault(false)
+                    if (ok) { okCount++; container.panels.setExpectedCrc(ip, r.crc) } else falhas.add(ip)
+                }
+                status = when {
+                    falhas.isEmpty() -> "✅ Enviado para ${okCount} painel(is)."
+                    okCount == 0 -> "❌ Falhou em todos os painéis."
+                    else -> "⚠ Enviado para $okCount; falhou em: ${falhas.joinToString()}"
+                }
+            } catch (e: Exception) {
+                status = "❌ Erro: ${e.message ?: e.javaClass.simpleName}"
+            } finally {
+                container.connection.transferEnded(false, falhas.isEmpty())
+                busy = false; progress = null
+            }
+        }
+    }
+
     fun receber(container: AppContainer, link: PanelLink, viaUsb: Boolean = false) {
         if (busy) return
         busy = true; progress = 0f; status = "Recebendo…"

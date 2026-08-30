@@ -23,6 +23,9 @@ class EditorViewModel : ViewModel() {
     /** Orientação do painel: false = horizontal (deitado), true = vertical (em pé). */
     var portrait by mutableStateOf(false)
 
+    /** O rascunho automático já foi restaurado nesta sessão? (evita repetir). */
+    var draftRestored by mutableStateOf(false)
+
     /** Snapshot do que está gravado no painel (para a prévia "ao vivo" deslizável). */
     var liveAlbum by mutableStateOf<Album?>(null)
         private set
@@ -38,6 +41,28 @@ class EditorViewModel : ViewModel() {
     fun setLive(album: Album?, crc: Int = 0, panelId: String = "") {
         liveAlbum = album; liveCrc = crc; livePanelId = panelId
     }
+
+    // ===== Publicação (salvar + enviar numa ação só) =====
+
+    /** Fase da publicação, para a barra fixa do editor dar retorno claro. */
+    enum class PubState { IDLE, WORKING, DONE, ERROR }
+
+    var pubState by mutableStateOf(PubState.IDLE)
+        private set
+    var pubProgress by mutableStateOf<Float?>(null)
+        private set
+    var pubMessage by mutableStateOf("")
+        private set
+
+    /** Marca o resultado da publicação (a UI mostra e some sozinho depois). */
+    fun pubStart() { pubState = PubState.WORKING; pubProgress = 0f; pubMessage = "Preparando…" }
+    fun pubProgress(sent: Int, total: Int) {
+        pubProgress = if (total > 0) sent.toFloat() / total else null
+        pubMessage = "Enviando… ${(100f * sent / total.coerceAtLeast(1)).toInt()}%"
+    }
+    fun pubDone(msg: String) { pubState = PubState.DONE; pubProgress = 1f; pubMessage = msg }
+    fun pubError(msg: String) { pubState = PubState.ERROR; pubProgress = null; pubMessage = msg }
+    fun pubReset() { pubState = PubState.IDLE; pubProgress = null; pubMessage = "" }
 
     val sel: Int get() = selected.coerceIn(0, (frames.size - 1).coerceAtLeast(0))
     val current: FrameDraft? get() = frames.getOrNull(sel)

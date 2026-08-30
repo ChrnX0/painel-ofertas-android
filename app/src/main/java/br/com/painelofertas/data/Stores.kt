@@ -43,6 +43,20 @@ class AlbumStore(context: Context) {
     }
 
     private fun safe(name: String) = name.replace(Regex("[\\\\/:*?\"<>|]"), "_").trim().ifEmpty { "Painel" }
+
+    // ===== Rascunho automático =====
+    // O trabalho em andamento é salvo continuamente num arquivo à parte, para o
+    // lojista não perder o que digitou se o Android encerrar o app.
+
+    private val draftFile = File(dir.parentFile, "rascunho.alb")
+
+    fun saveDraft(album: Album) {
+        runCatching { draftFile.writeText(album.toAlbText(), Charsets.ISO_8859_1) }
+    }
+
+    fun loadDraft(): Album? =
+        runCatching { if (draftFile.exists()) Album.fromAlbText(draftFile.readText(Charsets.ISO_8859_1)) else null }
+            .getOrNull()
 }
 
 /** Configurações persistentes (era Advanced.dll/config.ini). */
@@ -71,6 +85,11 @@ class SettingsStore(context: Context) {
     var txPassword: String
         get() = prefs.getString("txPassword", "") ?: ""
         set(v) = prefs.edit().putString("txPassword", v).apply()
+
+    /** O guia de primeira execução já foi dispensado? */
+    var onboardingDone: Boolean
+        get() = prefs.getBoolean("onboardingDone", false)
+        set(v) = prefs.edit().putBoolean("onboardingDone", v).apply()
 
     /** Tema: 0 = sistema, 1 = claro, 2 = escuro. Observável para trocar na hora. */
     private val _themeMode = MutableStateFlow(prefs.getInt("themeMode", 0))

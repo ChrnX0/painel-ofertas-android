@@ -8,6 +8,28 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.34.0] — 2026-08-29 · `versionCode 36`
+
+Passe de usabilidade: menos cerimônia, mais retorno, nada de trabalho perdido.
+
+### Adicionado
+- **Barra "Publicar" fixa no editor** — a ação principal do app numa só: salva o
+  álbum **e** envia ao painel, sem sair da tela. Mostra **para onde vai**, avisa se
+  **não cabe** na memória, e dá o retorno ali (enviando % · ✓ No painel agora ·
+  falhou). Antes eram 7 passos por troca de preço; agora é **um toque**
+- **Guia de primeira execução** ("Como funciona", 3 passos) — some ao dispensar
+- **Rascunho automático**: o trabalho em andamento é salvo continuamente e
+  restaurado ao abrir; o app pode ser encerrado sem perder o que foi digitado
+- **Envio para vários painéis** (aba Enviar): marque quantos quiser e envie o mesmo
+  álbum a todos, com progresso e resumo do que falhou
+
+### Alterado
+- A barra Publicar **sobe com o teclado** (`imePadding`) — nunca fica escondida
+- Alvos de toque das telas numeradas em 48dp e descrições de acessibilidade
+  ("Tela 2: Promoção, selecionada") em vez de só o número
+
+---
+
 ## [0.33.0] — 2026-08-29 · `versionCode 35`
 
 ### Alterado

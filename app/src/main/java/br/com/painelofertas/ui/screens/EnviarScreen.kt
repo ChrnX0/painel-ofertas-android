@@ -2,6 +2,7 @@ package br.com.painelofertas.ui.screens
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +20,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AddCircleOutline
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.AssistChip
@@ -77,6 +80,8 @@ fun EnviarScreen() {
     var albumSel by remember { mutableStateOf(albuns.firstOrNull() ?: "") }
     var ip by remember { mutableStateOf("") }
     var usarUsb by remember { mutableStateOf(false) }
+    /** IPs marcados para envio a vários painéis de uma vez. */
+    var varios by remember { mutableStateOf(setOf<String>()) }
     var usarSenha by remember { mutableStateOf(container.settings.useTxPassword) }
     var senhaTx by remember { mutableStateOf(container.settings.txPassword) }
 
@@ -173,15 +178,43 @@ fun EnviarScreen() {
                             )
                             if (panels.isEmpty()) {
                                 Text(
-                                    "Nenhum painel localizado ainda. Toque em cada painel na aba Painéis, ou digite o IP.",
+                                    "Nenhum painel localizado ainda. Ligue o painel na mesma rede Wi-Fi, ou digite o IP.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             } else {
+                                Text(
+                                    "Toque para escolher um, ou marque vários para enviar a todos:",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     panels.forEach { p ->
-                                        AssistChip(onClick = { ip = p.ip }, label = { Text("${p.name} (${p.ip})") })
+                                        val marcado = p.ip in varios
+                                        FilterChip(
+                                            selected = marcado || ip == p.ip,
+                                            onClick = {
+                                                if (marcado) varios = varios - p.ip else ip = p.ip
+                                            },
+                                            label = { Text("${p.name} (${p.ip})") },
+                                            trailingIcon = {
+                                                Icon(
+                                                    if (marcado) Icons.Filled.CheckCircle else Icons.Filled.AddCircleOutline,
+                                                    if (marcado) "Desmarcar ${p.name}" else "Marcar ${p.name} para envio múltiplo",
+                                                    Modifier.size(18.dp).clickable {
+                                                        varios = if (marcado) varios - p.ip else varios + p.ip
+                                                    },
+                                                )
+                                            },
+                                        )
                                     }
+                                }
+                                androidx.compose.animation.AnimatedVisibility(varios.isNotEmpty()) {
+                                    Text(
+                                        "${varios.size} painel(is) marcado(s) — o envio vai para todos.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Accent.Green,
+                                    )
                                 }
                             }
                         }
@@ -216,12 +249,19 @@ fun EnviarScreen() {
                 Button(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        linkAtual()?.let { vm.enviar(container, albumSel, it, if (usarUsb || ip.isBlank()) null else ip, viaUsb = usarUsb) }
+                        if (varios.isNotEmpty()) {
+                            vm.enviarParaVarios(container, albumSel, varios.toList())
+                        } else {
+                            linkAtual()?.let { vm.enviar(container, albumSel, it, if (usarUsb || ip.isBlank()) null else ip, viaUsb = usarUsb) }
+                        }
                     },
-                    enabled = !busy && albumSel.isNotBlank() && temDestino,
+                    enabled = !busy && albumSel.isNotBlank() && (temDestino || varios.isNotEmpty()),
                     shape = ButtonShape,
                     modifier = Modifier.fillMaxWidth().height(52.dp),
-                ) { Icon(Icons.AutoMirrored.Filled.Send, null, Modifier.size(18.dp)); Spacer(Modifier.size(8.dp)); Text("Enviar para o painel") }
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.Send, null, Modifier.size(18.dp)); Spacer(Modifier.size(8.dp))
+                    Text(if (varios.isNotEmpty()) "Enviar para ${varios.size} painéis" else "Enviar para o painel")
+                }
 
                 AccentOutlinedButton(
                     onClick = { linkAtual()?.let { vm.receber(container, it, viaUsb = usarUsb) } },

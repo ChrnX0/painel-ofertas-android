@@ -84,6 +84,9 @@ class AppContainer(context: Context) {
     /** Link UDP para um painel específico. */
     fun udpLink(panel: Panel): PanelLink = UdpLink(panel.ip, udp)
 
+    /** Link UDP por IP (usado no envio para vários painéis). */
+    fun udpLinkByIp(ip: String): PanelLink = UdpLink(ip, udp)
+
     fun transfer(link: PanelLink) = TransferEngine(link)
 
     /**

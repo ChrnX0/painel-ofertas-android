@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -52,6 +54,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -76,6 +80,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -84,8 +90,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import br.com.painelofertas.data.PanelStatus
 import br.com.painelofertas.editor.FrameDraft
 import br.com.painelofertas.editor.LineDraft
+import br.com.painelofertas.net.Encriptor
 import br.com.painelofertas.net.PanelLink
 import br.com.painelofertas.net.UdpLink
+import br.com.painelofertas.transfer.TransferProgress
 import br.com.painelofertas.protocol.Album
 import br.com.painelofertas.protocol.DurationTable
 import br.com.painelofertas.protocol.PanelFrame
@@ -99,6 +107,7 @@ import br.com.painelofertas.ui.components.ButtonShape
 import br.com.painelofertas.ui.components.CardHeader
 import br.com.painelofertas.ui.components.LedBezel
 import br.com.painelofertas.ui.components.OnAccent
+import br.com.painelofertas.ui.components.OnboardingCard
 import br.com.painelofertas.ui.components.accentCardColors
 import br.com.painelofertas.ui.components.MonoText
 import br.com.painelofertas.ui.components.PanelPreview
@@ -107,6 +116,7 @@ import br.com.painelofertas.ui.components.SegChoice
 import br.com.painelofertas.ui.LocalSnackbar
 import br.com.painelofertas.ui.rememberContainer
 import br.com.painelofertas.ui.theme.ledColorAt
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import br.com.painelofertas.ui.vm.AppViewModel
 import br.com.painelofertas.ui.vm.EditorViewModel
@@ -129,6 +139,7 @@ fun EditarScreen() {
     var confirmClear by remember { mutableStateOf(false) }
     var confirmDeleteAlbum by remember { mutableStateOf<String?>(null) }
     var showNameDialog by remember { mutableStateOf(false) }
+    var showGuide by remember { mutableStateOf(!container.settings.onboardingDone) }
     var panelBusy by remember { mutableStateOf(false) }
     val ledIdx by container.settings.ledColor.collectAsState()
 
@@ -151,6 +162,12 @@ fun EditarScreen() {
     }
     val temPainel = targetPanel != null || usbConnected
 
+    // "Cabe no painel?" — avisa ANTES de publicar (null = desconhecido).
+    val cabeNoPainel: Boolean? = remember(vm.frames.size, vm.frames.toList(), targetPanel?.freeMemory) {
+        val livre = targetPanel?.freeMemory ?: 0
+        if (livre <= 0) null else runCatching { vm.toAlbum(fonts).compile().consumo < livre }.getOrNull()
+    }
+
     fun sincronizar() {
         val link = panelLink() ?: run { msg = "Nenhum painel conectado. Abra a aba Painéis para localizar."; return }
         panelBusy = true; msg = "Lendo o painel…"
@@ -171,6 +188,46 @@ fun EditarScreen() {
         }
     }
 
+    /**
+     * PUBLICAR: a ação principal do app numa só. Salva o álbum e envia ao painel,
+     * com retorno na própria barra. Mata a cerimônia de "salvar → trocar de tela →
+     * escolher álbum → escolher painel → enviar".
+     */
+    fun publicar() {
+        val link = panelLink() ?: run { vm.pubError("Nenhum painel conectado."); return }
+        val album = vm.toAlbum(fonts)
+        container.albums.save(album)          // publica sempre a partir do que está na tela
+        val usb = viaUsb()
+        vm.pubStart()
+        container.connection.transferStarted(usb)
+        editScope.launch {
+            val r = album.compile()
+            val codigo =
+                if (container.settings.useTxPassword)
+                    Encriptor.code(container.settings.txPassword, System.currentTimeMillis().toString())
+                else IntArray(10)
+            val ok = runCatching {
+                container.transfer(link).upload(r.bytes, codigo, album.brilho) { p ->
+                    when (p) {
+                        is TransferProgress.Uploading -> vm.pubProgress(p.sent, p.total)
+                        else -> {}
+                    }
+                }
+            }.getOrDefault(false)
+            container.connection.transferEnded(usb, ok)
+            if (ok) {
+                targetPanel?.let { container.panels.setExpectedCrc(it.ip, r.crc) }
+                vm.setLive(album, targetPanel?.crcPanel ?: 0, targetPanel?.id ?: "usb")
+                vm.pubDone("✓ No painel agora")
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            } else {
+                vm.pubError("Não consegui enviar. Verifique o painel e tente de novo.")
+            }
+            delay(3500)
+            vm.pubReset()
+        }
+    }
+
     fun limpar() {
         val link = panelLink() ?: run { msg = "Nenhum painel conectado."; return }
         panelBusy = true; msg = "Limpando o painel…"
@@ -181,6 +238,21 @@ fun EditarScreen() {
             container.connection.transferEnded(usb, ok)
             msg = if (ok) "✅ Painel limpo." else "❌ Falha ao limpar o painel."
             panelBusy = false
+        }
+    }
+
+    // Rascunho automático: restaura o trabalho em andamento na 1ª composição e
+    // salva a cada mudança — o lojista não perde o que digitou se o app for morto.
+    LaunchedEffect(Unit) {
+        if (!vm.draftRestored) {
+            container.albums.loadDraft()?.let { if (it.frames.isNotEmpty()) vm.load(it) }
+            vm.draftRestored = true
+        }
+    }
+    LaunchedEffect(vm.frames.toList(), vm.nome) {
+        if (vm.draftRestored) {
+            delay(600) // debounce: não grava a cada tecla
+            runCatching { container.albums.saveDraft(vm.toAlbum(fonts)) }
         }
     }
 
@@ -227,7 +299,8 @@ fun EditarScreen() {
         }
     }
 
-    Column(Modifier.fillMaxSize()) {
+    // imePadding: a barra Publicar sobe junto com o teclado (não fica escondida).
+    Column(Modifier.fillMaxSize().imePadding()) {
 
         // ===== FAIXA FIXA (não rola): números + prévia + info =====
         Column(
@@ -248,6 +321,11 @@ fun EditarScreen() {
             Modifier.weight(1f).fillMaxWidth().verticalScroll(scroll).padding(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // Guia de primeira execução (some para sempre ao dispensar).
+            androidx.compose.animation.AnimatedVisibility(showGuide) {
+                OnboardingCard(onDismiss = { showGuide = false; container.settings.onboardingDone = true })
+            }
+
             SegChoice(listOf("Horizontal", "Vertical"), if (vm.portrait) 1 else 0, Modifier.fillMaxWidth()) { vm.portrait = it == 1 }
 
             // Modo de composição: Padrão (oferta pronta) ou Livre (texto solto).
@@ -341,6 +419,16 @@ fun EditarScreen() {
                 Text(msg, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
             }
         }
+
+        // ===== BARRA DE PUBLICAÇÃO (fixa) — a ação principal, sempre ao alcance =====
+        PublishBar(
+            destino = targetPanel?.name ?: if (usbConnected) "Painel por USB" else null,
+            cabe = cabeNoPainel,
+            state = vm.pubState,
+            progress = vm.pubProgress,
+            message = vm.pubMessage,
+            onPublicar = { publicar() },
+        )
     }
 
     if (showNameDialog) {
@@ -481,6 +569,74 @@ private fun formatPreco(valor: String, cents3: Boolean, centsOff: Boolean): Stri
     return "R$ $reais,$cents"
 }
 
+/**
+ * Barra fixa de publicação — a ação principal do app, sempre visível no editor.
+ * Salva + envia numa tacada, mostra para onde vai, avisa se não cabe na memória,
+ * e dá o retorno ali mesmo (enviando / no painel / falhou).
+ */
+@Composable
+private fun PublishBar(
+    destino: String?,
+    cabe: Boolean?,
+    state: EditorViewModel.PubState,
+    progress: Float?,
+    message: String,
+    onPublicar: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    Surface(color = cs.surface, tonalElevation = 3.dp, shadowElevation = 8.dp) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp).animateContentSize()) {
+            // barra fina de progresso durante o envio
+            androidx.compose.animation.AnimatedVisibility(state == EditorViewModel.PubState.WORKING) {
+                LinearProgressIndicator(
+                    progress = { progress ?: 0f },
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                )
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    when (state) {
+                        EditorViewModel.PubState.DONE ->
+                            Text(message, style = MaterialTheme.typography.titleSmall, color = Accent.Green)
+                        EditorViewModel.PubState.ERROR ->
+                            Text(message, style = MaterialTheme.typography.bodySmall, color = Accent.Rose)
+                        EditorViewModel.PubState.WORKING ->
+                            Text(message, style = MaterialTheme.typography.bodyMedium, color = cs.onSurface)
+                        EditorViewModel.PubState.IDLE -> {
+                            if (destino != null) {
+                                MonoText("PARA", size = 9)
+                                Text(destino, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                                if (cabe == false) {
+                                    Text("⚠ não cabe na memória do painel", style = MaterialTheme.typography.bodySmall, color = Accent.Rose)
+                                }
+                            } else {
+                                Text("Nenhum painel encontrado", style = MaterialTheme.typography.titleSmall)
+                                Text("Ligue o painel na mesma rede Wi-Fi.", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+
+                Button(
+                    onClick = onPublicar,
+                    enabled = destino != null && state != EditorViewModel.PubState.WORKING,
+                    shape = ButtonShape,
+                    modifier = Modifier.height(50.dp).semantics { contentDescription = "Publicar no painel" },
+                ) {
+                    if (state == EditorViewModel.PubState.WORKING) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = cs.onPrimary)
+                    } else {
+                        Icon(Icons.AutoMirrored.Filled.Send, null, Modifier.size(19.dp))
+                        Spacer(Modifier.size(8.dp))
+                        Text("Publicar", style = MaterialTheme.typography.titleSmall)
+                    }
+                }
+            }
+        }
+    }
+}
+
 /** Fileira de telas numeradas (One UI) + botão "+". Desliza na horizontal. */
 @Composable
 private fun ScreensBar(vm: EditorViewModel, onAdd: () -> Unit) {
@@ -490,12 +646,13 @@ private fun ScreensBar(vm: EditorViewModel, onAdd: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        vm.frames.forEachIndexed { i, _ ->
+        vm.frames.forEachIndexed { i, d ->
             val selected = i == vm.sel
             Box(
-                Modifier.size(46.dp).clip(RoundedCornerShape(15.dp))
+                Modifier.size(48.dp).clip(RoundedCornerShape(15.dp))
                     .background(if (selected) cs.primary else cs.surfaceContainerHigh)
-                    .clickable { vm.selected = i },
+                    .clickable { vm.selected = i }
+                    .semantics { contentDescription = "Tela ${i + 1}: ${d.display()}" + if (selected) ", selecionada" else "" },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -507,9 +664,9 @@ private fun ScreensBar(vm: EditorViewModel, onAdd: () -> Unit) {
             }
         }
         Box(
-            Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(cs.surfaceContainerHigh).clickable { onAdd() },
+            Modifier.size(48.dp).clip(RoundedCornerShape(15.dp)).background(cs.surfaceContainerHigh).clickable { onAdd() },
             contentAlignment = Alignment.Center,
-        ) { Icon(Icons.Filled.Add, "Nova tela", tint = cs.primary) }
+        ) { Icon(Icons.Filled.Add, "Adicionar nova tela", tint = cs.primary) }
     }
 }
 
