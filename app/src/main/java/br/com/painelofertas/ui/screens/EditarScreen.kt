@@ -43,6 +43,9 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.WarningAmber
@@ -148,7 +151,19 @@ fun EditarScreen() {
     var confirmClear by remember { mutableStateOf(false) }
     var confirmDeleteAlbum by remember { mutableStateOf<String?>(null) }
     var showNameDialog by remember { mutableStateOf(false) }
+    var showBatchDialog by remember { mutableStateOf(false) }
     var showGuide by remember { mutableStateOf(!container.settings.onboardingDone) }
+    var tocando by remember { mutableStateOf(false) }
+
+    // Prévia animada: avança pelas telas usando o tempo de cada uma (como o painel).
+    LaunchedEffect(tocando, vm.frames.size) {
+        if (!tocando || vm.frames.size <= 1) return@LaunchedEffect
+        while (tocando) {
+            val seg = DurationTable.secondsByIndex.getOrNull(vm.current?.durationIndex ?: 0) ?: 0
+            delay(if (seg > 0) seg * 1000L else 3000L)  // 0 = "auto" → 3s
+            vm.selected = (vm.sel + 1) % vm.frames.size
+        }
+    }
     var panelBusy by remember { mutableStateOf(false) }
     val ledIdx by container.settings.ledColor.collectAsState()
 
@@ -319,7 +334,24 @@ fun EditarScreen() {
             Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            SectionLabel("Editor de telas")
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                SectionLabel("Editor de telas")
+                // Prévia animada: roda a sequência como o painel vai exibir.
+                if (vm.frames.size > 1) {
+                    AccentOutlinedButton(
+                        onClick = { tocando = !tocando },
+                        accent = if (tocando) Accent.Rose else Accent.Teal,
+                    ) {
+                        Icon(
+                            if (tocando) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                            if (tocando) "Parar a prévia" else "Ver a sequência rodando",
+                            Modifier.size(16.dp),
+                        )
+                        Spacer(Modifier.size(6.dp))
+                        Text(if (tocando) "Parar" else "Ver rodando", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
             ScreensBar(vm) { showNameDialog = true }
             if (cur != null) {
                 val frameAtual = cur.build(fonts, vm.portrait)
@@ -489,9 +521,21 @@ fun EditarScreen() {
     }
 
     if (showNameDialog) {
-        NovaTelaDialog(sugestao = "Tela ${vm.frames.size + 1}", onDismiss = { showNameDialog = false }) { nome, tipoMsg ->
+        NovaTelaDialog(
+            sugestao = "Tela ${vm.frames.size + 1}",
+            onDismiss = { showNameDialog = false },
+            onLote = { showNameDialog = false; showBatchDialog = true },
+        ) { nome, tipoMsg ->
             if (tipoMsg) vm.addMsg(nome) else vm.addOfe(nome)
             showNameDialog = false
+        }
+    }
+
+    if (showBatchDialog) {
+        LoteDialog(onDismiss = { showBatchDialog = false }) { texto, substituir ->
+            val n = vm.addBatch(texto, substituir)
+            msg = if (n > 0) "$n tela(s) criada(s) da lista." else "Nada para criar."
+            showBatchDialog = false
         }
     }
 
@@ -767,9 +811,14 @@ private fun PreviewPager(editing: PanelFrame, half: Boolean, portrait: Boolean, 
     }
 }
 
-/** Diálogo do "+": nomear a nova tela e escolher o tipo. */
+/** Diálogo do "+": nomear a nova tela, escolher o tipo — ou criar várias de uma vez. */
 @Composable
-private fun NovaTelaDialog(sugestao: String, onDismiss: () -> Unit, onCreate: (String, Boolean) -> Unit) {
+private fun NovaTelaDialog(
+    sugestao: String,
+    onDismiss: () -> Unit,
+    onLote: () -> Unit,
+    onCreate: (String, Boolean) -> Unit,
+) {
     var nome by remember { mutableStateOf("") }
     var tipoMsg by remember { mutableStateOf(false) }
     AlertDialog(
@@ -780,9 +829,55 @@ private fun NovaTelaDialog(sugestao: String, onDismiss: () -> Unit, onCreate: (S
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(nome, { nome = it }, label = { Text("Nome (ex.: Picanha)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 SegChoice(listOf("Oferta", "Mensagem"), if (tipoMsg) 1 else 0, Modifier.fillMaxWidth()) { tipoMsg = it == 1 }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                AccentOutlinedButton(onClick = onLote, accent = Accent.Teal, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.PlaylistAdd, null, Modifier.size(18.dp)); Spacer(Modifier.size(6.dp))
+                    Text("Criar várias de uma lista")
+                }
             }
         },
         confirmButton = { TextButton(onClick = { onCreate(nome.ifBlank { sugestao }, tipoMsg) }) { Text("Criar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+    )
+}
+
+/**
+ * **Criação em lote**: cole a lista de ofertas — uma por linha — e receba o álbum
+ * pronto. Cada linha vira uma tela diagramada com o preço em destaque.
+ */
+@Composable
+private fun LoteDialog(onDismiss: () -> Unit, onCriar: (String, Boolean) -> Unit) {
+    var texto by remember { mutableStateOf("") }
+    var substituir by remember { mutableStateOf(false) }
+    val linhas = texto.split('\n').count { it.isNotBlank() }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Filled.PlaylistAdd, null) },
+        title = { Text("Criar várias telas") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "Uma oferta por linha. O app separa o preço e monta cada tela.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    texto, { texto = it },
+                    label = { Text("Lista de ofertas") },
+                    placeholder = { Text("PICANHA 9,90 O KILO\nALCATRA 7,90 O KILO\nFRALDINHA 6,50 O KILO") },
+                    minLines = 5,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                InlineToggle("Substituir as telas atuais", substituir) { substituir = it }
+                if (linhas > 0) {
+                    MonoText("$linhas tela(s) serão criadas", size = 11, color = Accent.Teal)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onCriar(texto, substituir) }, enabled = linhas > 0) { Text("Criar $linhas") }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
     )
 }

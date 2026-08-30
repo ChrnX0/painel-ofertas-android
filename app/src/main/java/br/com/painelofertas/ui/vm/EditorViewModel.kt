@@ -9,6 +9,7 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.ViewModel
 import br.com.painelofertas.editor.FrameDraft
 import br.com.painelofertas.protocol.Album
+import br.com.painelofertas.render.AutoLayout
 
 /**
  * Estado do editor de álbum. Vive num [ViewModel] com escopo de Activity, então
@@ -85,6 +86,32 @@ class EditorViewModel : ViewModel() {
 
     fun addMsg(name: String = "") { frames.add(FrameDraft.Msg(name = name)); selected = frames.lastIndex }
     fun addOfe(name: String = "") { frames.add(FrameDraft.Ofe(name = name)); selected = frames.lastIndex }
+
+    /**
+     * **Criação em lote**: cada linha da lista vira uma tela pronta, com a
+     * composição inteligente (preço em destaque) e nome tirado do produto.
+     *
+     * `PICANHA 9,90 O KILO` → tela "Picanha". N ofertas pelo custo de digitar uma
+     * lista — é o dia a dia de quem troca 20 preços por semana.
+     */
+    fun addBatch(texto: String, substituir: Boolean): Int {
+        val linhas = texto.split('\n').map { it.trim() }.filter { it.isNotBlank() }
+        if (linhas.isEmpty()) return 0
+        if (substituir) frames.clear()
+        linhas.forEach { linha ->
+            frames.add(FrameDraft.Msg(name = nomeDaOferta(linha), freeText = linha, autoFit = true, smart = true))
+        }
+        selected = frames.lastIndex.coerceAtLeast(0)
+        return linhas.size
+    }
+
+    /** Nome curto da tela a partir da linha: o que vem antes do preço (ou as 2 primeiras palavras). */
+    private fun nomeDaOferta(linha: String): String {
+        val antes = AutoLayout.smartSplit(linha).firstOrNull()?.takeIf { !it.hero }?.text
+        val base = antes ?: linha
+        return base.split(Regex("\\s+")).take(2).joinToString(" ")
+            .lowercase().replaceFirstChar { it.uppercase() }
+    }
 
     /** Renomeia a tela [index] (o nome aparece nos quadradinhos e na Sequência). */
     fun renameFrame(index: Int, newName: String) {

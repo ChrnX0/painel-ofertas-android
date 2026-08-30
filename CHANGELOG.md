@@ -8,6 +8,20 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.38.0] — 2026-08-29 · `versionCode 40`
+
+### Adicionado
+- **Criação em lote — o álbum inteiro de uma vez**: cole a lista de ofertas (uma por
+  linha) e cada linha vira uma tela pronta, diagramada com o preço em destaque e
+  **nomeada pelo produto**. Quem troca 20 preços por semana passa a fazer isso numa
+  colada. Opção de somar às telas atuais ou substituir
+- **Prévia animada**: botão **Ver rodando** exibe a sequência girando com o **tempo
+  de cada tela**, como o painel vai mostrar — dá para conferir o álbum de relance
+- +5 testes (`BatchTest`) da lógica de lote: nome vindo do produto, limite de duas
+  palavras, linhas sem preço, linhas em branco e a separação de cada oferta
+
+---
+
 ## [0.37.0] — 2026-08-29 · `versionCode 39`
 
 ### Adicionado
