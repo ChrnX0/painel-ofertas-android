@@ -63,12 +63,19 @@ class AppContainer(context: Context) {
         startScheduler()
     }
 
+    /**
+     * IP do aparelho a usar na descoberta: SEMPRE o detectado agora (a rede pode ter
+     * mudado — DHCP, outra Wi-Fi). O IP salvo é só último recurso se a detecção falhar.
+     * Antes o salvo tinha prioridade e um valor velho quebrava a busca.
+     */
+    fun currentLocalIp(): String = LocalIp.detect() ?: settings.localIp
+
     /** Dispara uma varredura da rede local (usado no boot e ao abrir a aba Painéis). */
     fun autoConnect() {
         appScope.launch {
-            val ip = settings.localIp.ifBlank { LocalIp.detect() ?: "" }
+            val ip = currentLocalIp()
             if (ip.isNotBlank()) {
-                if (settings.localIp.isBlank()) settings.localIp = ip
+                settings.localIp = ip // mantém o campo refletindo o IP atual
                 runCatching { discovery.scan(ip) }
             }
         }

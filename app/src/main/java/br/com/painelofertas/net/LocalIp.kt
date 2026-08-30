@@ -9,6 +9,9 @@ object LocalIp {
         return runCatching {
             NetworkInterface.getNetworkInterfaces().toList()
                 .filter { it.isUp && !it.isLoopback }
+                // prefere a interface Wi-Fi (wlan*) — é a rede em que o painel está;
+                // evita pegar o IP de dados móveis/VPN quando ambos estão ativos.
+                .sortedByDescending { it.name.startsWith("wlan") }
                 .flatMap { it.inetAddresses.toList() }
                 .firstOrNull { !it.isLoopbackAddress && it is Inet4Address && it.isSiteLocalAddress }
                 ?.hostAddress

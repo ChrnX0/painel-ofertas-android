@@ -8,6 +8,18 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.31.0] — 2026-08-29 · `versionCode 33`
+
+### Corrigido
+- **Bug crítico de descoberta**: o app só achava o painel se o campo "IP deste
+  celular" fosse apagado. Causa: o IP **salvo** tinha prioridade sobre o **detectado**;
+  um valor velho (DHCP mudou / outra Wi-Fi) fazia a varredura procurar na sub-rede
+  errada e mandar o painel responder pro IP errado. Agora a **detecção sempre vence**
+  (o salvo é só último recurso), o detector **prefere a interface Wi-Fi (wlan)**, e o
+  campo virou **somente leitura** (informativo) — sem como digitar um IP errado
+
+---
+
 ## [0.30.0] — 2026-08-29 · `versionCode 32`
 
 Reforma grande a partir do retorno do cliente: navegação por menu, editor com faixa

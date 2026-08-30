@@ -50,7 +50,8 @@ class PanelDiscovery(
                 delay(RESCAN_MS)
                 val online = panels.panels.value.any { it.status == PanelStatus.ONLINE }
                 if (!online) {
-                    val ip = settings.localIp.ifBlank { LocalIp.detect() ?: "" }
+                    // detecção PRIMEIRO (a rede pode ter mudado); salvo só como último recurso
+                    val ip = LocalIp.detect() ?: settings.localIp
                     if (ip.isNotBlank()) runCatching { scan(ip) }
                 }
             }

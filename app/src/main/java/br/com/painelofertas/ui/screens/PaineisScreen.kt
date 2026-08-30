@@ -94,7 +94,9 @@ fun PaineisScreen() {
     val snackbar = LocalSnackbar.current
     val panels by container.panels.panels.collectAsState()
     val usbConnected by container.usb.connected.collectAsState()
-    var localIp by remember { mutableStateOf(container.settings.localIp.ifBlank { LocalIp.detect() ?: "" }) }
+    // IP do aparelho SEMPRE detectado agora (não usa mais valor salvo, que virava
+    // velho e quebrava a busca). Recalcula ao (re)entrar na aba.
+    val localIp = remember { container.currentLocalIp() }
     val scanning by container.discovery.scanning.collectAsState()
 
     // Auto-conectar: ao abrir a aba, re-anuncia na rede (painéis na mesma rede aparecem sozinhos).
@@ -176,7 +178,7 @@ fun PaineisScreen() {
         }
 
         HorizontalDivider(Modifier.padding(vertical = 4.dp))
-        Appear { RedeAparelhoCard(localIp) { localIp = it; container.settings.localIp = it } }
+        Appear { RedeAparelhoCard(localIp) }
         Appear(delayMillis = 40) { WifiConfigCard(usbConnected, localIp, container, scope) }
         Appear(delayMillis = 80) { PanelPasswordCard(usbConnected, container, scope) }
         Appear(delayMillis = 120) { DiagnosticoCard() }
@@ -275,15 +277,21 @@ private fun chipName(vid: Int): String = when (vid) {
     else -> "VID 0x%04X".format(vid)
 }
 
-/** Rede do celular (movido de Config): IP do aparelho + DHCP do painel. */
+/** Rede do celular (movido de Config): IP detectado (informativo) + DHCP do painel. */
 @Composable
-private fun RedeAparelhoCard(localIp: String, onIp: (String) -> Unit) {
+private fun RedeAparelhoCard(localIp: String) {
     val container = rememberContainer()
     var dhcp by remember { mutableStateOf(container.settings.dhcp) }
     Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Blue)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             CardHeader(Icons.Filled.Router, Accent.Blue, "Rede do aparelho", "Como o painel encontra este celular na rede.")
-            OutlinedTextField(localIp, onIp, label = { Text("IP deste celular") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text("IP deste celular · detectado automaticamente", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                MonoText(localIp.ifBlank { "— (sem Wi-Fi)" }, size = 15, color = MaterialTheme.colorScheme.onSurface)
+            }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Painel usa DHCP", style = MaterialTheme.typography.bodyLarge)
                 Switch(dhcp, { dhcp = it; container.settings.dhcp = it })
