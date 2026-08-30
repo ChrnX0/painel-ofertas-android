@@ -34,6 +34,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -874,12 +875,12 @@ private fun MsgForm(draft: FrameDraft.Msg, onChange: (FrameDraft.Msg) -> Unit) {
             }
         }
 
-        // Auto-justificar: o app centraliza e distribui sozinho no display.
+        // Auto-ajuste: o app quebra, dimensiona e centraliza o texto sozinho.
         Card(colors = accentCardColors(Accent.Teal)) {
             Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                InlineToggle("Ajustar automaticamente", draft.autoFit) { onChange(draft.copy(autoFit = it)) }
+                InlineToggle("Ajustar o texto à tela", draft.autoFit) { onChange(draft.copy(autoFit = it)) }
                 Text(
-                    if (draft.autoFit) "O texto é centralizado e distribuído sozinho, na maior fonte que couber."
+                    if (draft.autoFit) "Escreva à vontade: o app quebra as linhas, escolhe a maior fonte que couber e centraliza."
                     else "Você escolhe linha, coluna e fonte de cada linha de texto.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -887,17 +888,100 @@ private fun MsgForm(draft: FrameDraft.Msg, onChange: (FrameDraft.Msg) -> Unit) {
             }
         }
 
-        SectionLabel("Linhas de texto")
-        draft.lines.forEachIndexed { i, linha ->
-            LineCard(
-                linha,
-                autoFit = draft.autoFit,
-                onChange = { nl -> onChange(draft.copy(lines = draft.lines.toMutableList().also { it[i] = nl })) },
-                onRemove = { onChange(draft.copy(lines = draft.lines.toMutableList().also { if (it.size > 1) it.removeAt(i) })) },
-            )
+        if (draft.autoFit) {
+            AutoTextCard(draft, onChange)
+        } else {
+            SectionLabel("Linhas de texto")
+            draft.lines.forEachIndexed { i, linha ->
+                LineCard(
+                    linha,
+                    autoFit = false,
+                    onChange = { nl -> onChange(draft.copy(lines = draft.lines.toMutableList().also { it[i] = nl })) },
+                    onRemove = { onChange(draft.copy(lines = draft.lines.toMutableList().also { if (it.size > 1) it.removeAt(i) })) },
+                )
+            }
+            OutlinedButton(onClick = { onChange(draft.copy(lines = draft.lines + LineDraft())) }, shape = ButtonShape) {
+                Icon(Icons.Filled.Add, null); Text("Linha")
+            }
         }
-        OutlinedButton(onClick = { onChange(draft.copy(lines = draft.lines + LineDraft())) }, shape = ButtonShape) {
-            Icon(Icons.Filled.Add, null); Text("Linha")
+    }
+}
+
+/**
+ * Modo automático: um único campo de texto corrido. O app quebra em linhas,
+ * escolhe a maior fonte em que tudo cabe e centraliza — e mostra ao vivo o que
+ * decidiu ("3 linhas · fonte Terceira"), para o lojista entender o resultado.
+ */
+@Composable
+private fun AutoTextCard(draft: FrameDraft.Msg, onChange: (FrameDraft.Msg) -> Unit) {
+    val fonts = rememberContainer().fonts
+    val texto = draft.textoParaAjuste()
+
+    val fit = remember(texto, draft.halfScreen, draft.maxFont, draft.align) {
+        AutoLayout.fitParagraph(texto, draft.halfScreen, portrait = false, fonts = fonts, maxFont = draft.maxFont, align = draft.align)
+    }
+
+    Card {
+        Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            SectionLabel("Texto")
+            OutlinedTextField(
+                value = texto,
+                onValueChange = { onChange(draft.copy(freeText = it)) },
+                label = { Text("Escreva o que aparece no painel") },
+                placeholder = { Text("Ex.: PROMOÇÃO DO DIA\nPICANHA MACIA") },
+                minLines = 3,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            // O que o app decidiu — transparência sobre o ajuste automático.
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(
+                    if (fit.fits) Icons.Filled.AutoAwesome else Icons.Filled.WarningAmber,
+                    null,
+                    Modifier.size(16.dp),
+                    tint = if (fit.fits) Accent.Teal else Accent.Amber,
+                )
+                MonoText(
+                    if (fit.lines.isEmpty()) "escreva algo acima"
+                    else "${fit.lines.size} linha(s) · fonte ${PanelFont.of(fit.fontCode).displayName}" +
+                        if (fit.fits) "" else " · não cabe nem no menor tamanho",
+                    size = 11,
+                    color = if (fit.fits) MaterialTheme.colorScheme.onSurfaceVariant else Accent.Amber,
+                )
+            }
+
+            SectionLabel("Alinhamento")
+            SegChoice(
+                listOf("Esquerda", "Centro", "Direita"),
+                when (draft.align) {
+                    AutoLayout.Align.LEFT -> 0
+                    AutoLayout.Align.CENTER -> 1
+                    AutoLayout.Align.RIGHT -> 2
+                },
+                Modifier.fillMaxWidth(),
+            ) {
+                onChange(draft.copy(align = when (it) {
+                    0 -> AutoLayout.Align.LEFT
+                    2 -> AutoLayout.Align.RIGHT
+                    else -> AutoLayout.Align.CENTER
+                }))
+            }
+
+            SectionLabel("Tamanho máximo")
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                PanelFont.entries.forEach { f ->
+                    FilterChip(
+                        selected = draft.maxFont == f.code,
+                        onClick = { onChange(draft.copy(maxFont = f.code)) },
+                        label = { Text(f.displayName, style = MaterialTheme.typography.labelSmall) },
+                    )
+                }
+            }
+            Text(
+                "O app usa este tamanho ou menor — o que couber na tela.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

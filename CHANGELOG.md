@@ -8,6 +8,28 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.36.0] — 2026-08-29 · `versionCode 38`
+
+### Adicionado
+- **Motor de diagramação (o texto se ajusta à tela de verdade)**: no modo Livre,
+  escreva o texto corrido — o app **quebra em linhas por palavra**, testa da maior
+  fonte para a menor e usa **a maior em que tudo cabe (largura E altura juntas)**,
+  centralizando o bloco. Palavra maior que o painel é quebrada dentro dela; quebras
+  digitadas pelo usuário são respeitadas
+- **Alinhamento** (esquerda / centro / direita) e **tamanho máximo** — o app usa
+  esse teto ou menos, o que couber
+- **Retorno do que foi decidido**: "3 linha(s) · fonte Terceira", ou o aviso de que
+  não cabe nem no menor tamanho
+- **9 testes de unidade** do motor (`AutoLayoutTest`), com fontes sintéticas — cobrem
+  quebra por palavra, quebra dentro da palavra, escolha de fonte, centralização
+  vertical e o caso que não cabe
+
+### Corrigido
+- O auto-ajuste anterior media só a **largura de cada linha isolada** — podia
+  estourar a **altura** do painel. Agora largura e altura são avaliadas juntas
+
+---
+
 ## [0.35.0] — 2026-08-29 · `versionCode 37`
 
 ### Adicionado

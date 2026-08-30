@@ -39,8 +39,14 @@ sealed interface FrameDraft {
         val border: Int = 0, // 0=sem, 1=segmentada, 2=contínua
         val enabled: Boolean = true,
         override val name: String = "",
-        /** Auto-justificar: o app centraliza e distribui o texto sozinho no display. */
+        /** Auto-justificar: o app quebra, dimensiona e centraliza o texto sozinho. */
         val autoFit: Boolean = true,
+        /** Texto corrido do modo automático (o app o ajusta ao espaço da tela). */
+        val freeText: String = "",
+        /** Alinhamento do bloco no modo automático. */
+        val align: AutoLayout.Align = AutoLayout.Align.CENTER,
+        /** Teto de tamanho no modo automático (o app pode usar menor para caber). */
+        val maxFont: Int = 4,
     ) : FrameDraft {
         override fun build(fonts: FontProvider, portrait: Boolean) = PanelFrame(
             type = FrameType.MENSAGEM,
@@ -51,17 +57,24 @@ sealed interface FrameDraft {
             enabled = enabled,
             records =
                 if (autoFit) {
-                    AutoLayout.layout(
-                        linhas = lines.map { it.text to it.font },
+                    // Texto corrido ajustado à tela (quebra + maior fonte que couber).
+                    AutoLayout.fitParagraph(
+                        texto = textoParaAjuste(),
                         halfScreen = halfScreen,
                         portrait = portrait,
                         fonts = fonts,
-                    )
+                        maxFont = maxFont,
+                        align = align,
+                    ).records
                 } else {
                     lines.filter { it.text.isNotBlank() }
                         .map { PanelRecord.Text(9, it.row, it.col, it.font, it.text) }
                 },
         )
+
+        /** O texto do modo automático — usa as linhas antigas se ainda não houver texto corrido. */
+        fun textoParaAjuste(): String =
+            freeText.ifBlank { lines.filter { it.text.isNotBlank() }.joinToString("\n") { it.text } }
 
         override fun label() = "Mensagem"
     }

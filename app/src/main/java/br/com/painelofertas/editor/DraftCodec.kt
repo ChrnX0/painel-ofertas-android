@@ -1,5 +1,6 @@
 package br.com.painelofertas.editor
 
+import br.com.painelofertas.render.AutoLayout
 import br.com.painelofertas.render.OfertaSpec
 import org.json.JSONArray
 import org.json.JSONObject
@@ -51,6 +52,9 @@ object DraftCodec {
             put("borda", d.border)
             put("enabled", d.enabled)
             put("autoFit", d.autoFit)
+            put("freeText", d.freeText)
+            put("align", d.align.name)
+            put("maxFont", d.maxFont)
             put("linhas", JSONArray().also { arr ->
                 d.lines.forEach { l ->
                     arr.put(JSONObject().apply {
@@ -94,6 +98,10 @@ object DraftCodec {
                 enabled = o.optBoolean("enabled", true),
                 name = o.optString("nome"),
                 autoFit = o.optBoolean("autoFit", true),
+                freeText = o.optString("freeText"),
+                align = runCatching { AutoLayout.Align.valueOf(o.optString("align", "CENTER")) }
+                    .getOrDefault(AutoLayout.Align.CENTER),
+                maxFont = o.optInt("maxFont", 4),
             )
         }
         else -> null // "cru" não é restaurável campo-a-campo
