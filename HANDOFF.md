@@ -144,6 +144,10 @@ protocol/  render/  net/  transfer/  usb/  discovery/  data/  editor/  ui/(+vm)
 
 ## Perguntas para a LedBlock (destravariam novas funções)
 
+> 📄 **Pronto para encaminhar:** [`docs/PERGUNTAS-LEDBLOCK.md`](docs/PERGUNTAS-LEDBLOCK.md)
+> reúne todas as perguntas técnicas num documento único, em ordem de impacto e com
+> a evidência (arquivo:linha) de cada uma — basta mandar ao técnico deles.
+
 O app já aciona **tudo** que o protocolo extraído do fonte permite. Para ir além,
 precisaríamos de informação de vocês:
 

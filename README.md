@@ -116,6 +116,18 @@ Roteiro de **10 passos** para validar contra um painel real
 
 </td>
 </tr>
+<tr>
+<td width="25%" align="center" colspan="4">
+
+### ❓
+**[Perguntas para a LedBlock](docs/PERGUNTAS-LEDBLOCK.md)**
+
+Documento **pronto para encaminhar** ao fabricante: o que falta saber para
+destravar **conteúdo dinâmico** (comandos `3/4/5` do firmware, nunca usados pelo
+app Windows) e **atualização de firmware**
+
+</td>
+</tr>
 </table>
 
 <sub>📋 Histórico de versões: **[CHANGELOG.md](CHANGELOG.md)**</sub>
