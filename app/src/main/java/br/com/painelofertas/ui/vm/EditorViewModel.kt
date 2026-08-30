@@ -26,7 +26,18 @@ class EditorViewModel : ViewModel() {
     /** Snapshot do que está gravado no painel (para a prévia "ao vivo" deslizável). */
     var liveAlbum by mutableStateOf<Album?>(null)
         private set
-    fun setLive(album: Album?) { liveAlbum = album }
+
+    /** CRC do painel no último sync — re-sincroniza sozinho só quando muda. */
+    var liveCrc by mutableIntStateOf(0)
+        private set
+
+    /** Painel (id) do último sync, para saber se trocou de painel-alvo. */
+    var livePanelId by mutableStateOf("")
+        private set
+
+    fun setLive(album: Album?, crc: Int = 0, panelId: String = "") {
+        liveAlbum = album; liveCrc = crc; livePanelId = panelId
+    }
 
     val sel: Int get() = selected.coerceIn(0, (frames.size - 1).coerceAtLeast(0))
     val current: FrameDraft? get() = frames.getOrNull(sel)

@@ -8,6 +8,17 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.33.0] — 2026-08-29 · `versionCode 35`
+
+### Alterado
+- **Prévia "No painel" automática**: o app agora baixa **sozinho** o que está no
+  painel e mostra na prévia deslizável — sem precisar tocar em "Sincronizar". Ele
+  re-sincroniza sozinho só quando o conteúdo do painel muda (compara o CRC do
+  `STATUS`), então não fica baixando à toa. O botão Sincronizar continua como
+  atualização manual
+
+---
+
 ## [0.32.0] — 2026-08-29 · `versionCode 34`
 
 ### Adicionado

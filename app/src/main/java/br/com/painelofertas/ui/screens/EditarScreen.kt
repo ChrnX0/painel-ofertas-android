@@ -60,6 +60,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -158,10 +159,12 @@ fun EditarScreen() {
         editScope.launch {
             val album = runCatching { container.downloadAlbum(link) }.getOrNull()
             container.connection.transferEnded(usb, album != null)
+            val pid = targetPanel?.id ?: "usb"
+            val crc = targetPanel?.crcPanel ?: 0
             if (album == null) msg = "Não consegui ler o painel (verifique a conexão)."
-            else if (album.frames.isEmpty()) { vm.setLive(album); msg = "O painel está vazio." }
+            else if (album.frames.isEmpty()) { vm.setLive(album, crc, pid); msg = "O painel está vazio." }
             else {
-                vm.setLive(album)
+                vm.setLive(album, crc, pid)
                 msg = "Painel lido: ${album.frames.size} tela(s). Arraste a prévia para comparar Editando ↔ No painel."
             }
             panelBusy = false
@@ -179,6 +182,26 @@ fun EditarScreen() {
             msg = if (ok) "✅ Painel limpo." else "❌ Falha ao limpar o painel."
             panelBusy = false
         }
+    }
+
+    // Auto-sincroniza a prévia "No painel": baixa sozinho quando há um painel online
+    // (ou USB) e o conteúdo mudou (CRC diferente do último). Sem tocar em botão.
+    val syncPanel = panels.firstOrNull { it.status == PanelStatus.ONLINE }
+    LaunchedEffect(syncPanel?.id, syncPanel?.crcPanel, usbConnected) {
+        val link = when {
+            syncPanel != null -> UdpLink(syncPanel.ip, container.udp)
+            usbConnected -> container.usb.link.value
+            else -> null
+        } ?: return@LaunchedEffect
+        val pid = syncPanel?.id ?: "usb"
+        val crc = syncPanel?.crcPanel ?: 0
+        val jaTemos = vm.liveAlbum != null && vm.livePanelId == pid && vm.liveCrc == crc
+        if (jaTemos) return@LaunchedEffect
+        val usb = syncPanel == null && usbConnected
+        container.connection.transferStarted(usb)
+        val album = runCatching { container.downloadAlbum(link) }.getOrNull()
+        container.connection.transferEnded(usb, album != null)
+        if (album != null) vm.setLive(album, crc, pid)
     }
 
     // Exportar/Importar .alb para um arquivo escolhido pelo usuário (interop com o
@@ -507,14 +530,14 @@ private fun PreviewPager(editing: PanelFrame, half: Boolean, portrait: Boolean, 
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         LedBezel(Modifier.fillMaxWidth(), boardHeight = 126.dp) {
                             Text(
-                                "Toque em \"Sincronizar com o painel\"\npara ver aqui o que está no painel.",
+                                "O conteúdo do painel aparece aqui\nsozinho quando um painel é encontrado.",
                                 color = Color(0xFF6A7480),
                                 style = MaterialTheme.typography.bodySmall,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.padding(16.dp),
                             )
                         }
-                        MonoText("NO PAINEL · aguardando sincronismo", size = 10)
+                        MonoText("NO PAINEL · procurando conteúdo…", size = 10)
                     }
                 }
             }
