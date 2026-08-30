@@ -102,6 +102,7 @@ fun AgendaScreen() {
                             )
                         )
                         tarefas = container.schedule.list()
+                        container.refreshAlarms() // passa a valer com o app fechado
                     },
                     enabled = album.isNotBlank() && ip.isNotBlank(),
                     modifier = Modifier.padding(top = 8.dp),
@@ -128,7 +129,7 @@ fun AgendaScreen() {
                         )
                         Text("→ ${t.album} para ${t.panelIp}", style = MaterialTheme.typography.bodySmall)
                     }
-                    IconButton(onClick = { container.schedule.remove(t.id); tarefas = container.schedule.list() }) {
+                    IconButton(onClick = { container.schedule.remove(t.id); tarefas = container.schedule.list(); container.refreshAlarms() }) {
                         Icon(Icons.Filled.Delete, "Remover")
                     }
                 }

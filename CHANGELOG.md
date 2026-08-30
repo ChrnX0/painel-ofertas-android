@@ -8,6 +8,24 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.35.0] — 2026-08-29 · `versionCode 37`
+
+### Adicionado
+- **Auto-justificar (modo Livre)**: o app centraliza o texto na largura, distribui
+  as linhas na altura e escolhe **a maior fonte que couber** — o lojista só escreve.
+  Novo `render/AutoLayout.kt`; com o ajuste desligado, os campos manuais voltam
+- **Aviso de texto cortado**: se o conteúdo estoura o painel, um aviso aparece na
+  prévia dizendo **quanto** passou (px em largura/altura) e o que fazer. Evita
+  mandar para o display algo que apareceria pela metade
+- **Agendamento em segundo plano de verdade**: `AlarmManager` + serviço em primeiro
+  plano (`schedule/Scheduler.kt`, `ScheduleService.kt`) — o envio programado
+  acontece **com o app fechado**, e os alarmes são recriados após reiniciar o
+  celular. Antes só funcionava com o app aberto
+- **Histórico de publicações**: as últimas 12 telas publicadas ficam guardadas;
+  um toque recupera qualquer uma (a oferta de terça que volta na quinta)
+
+---
+
 ## [0.34.0] — 2026-08-29 · `versionCode 36`
 
 Passe de usabilidade: menos cerimônia, mais retorno, nada de trabalho perdido.

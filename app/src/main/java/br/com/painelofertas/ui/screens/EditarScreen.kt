@@ -39,10 +39,12 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -88,6 +90,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import br.com.painelofertas.data.PanelStatus
+import br.com.painelofertas.editor.DraftCodec
 import br.com.painelofertas.editor.FrameDraft
 import br.com.painelofertas.editor.LineDraft
 import br.com.painelofertas.net.Encriptor
@@ -98,6 +101,7 @@ import br.com.painelofertas.protocol.Album
 import br.com.painelofertas.protocol.DurationTable
 import br.com.painelofertas.protocol.PanelFrame
 import br.com.painelofertas.protocol.PanelFont
+import br.com.painelofertas.render.AutoLayout
 import br.com.painelofertas.render.OfertaSpec
 import br.com.painelofertas.render.PanelRenderer
 import br.com.painelofertas.ui.components.Accent
@@ -116,6 +120,9 @@ import br.com.painelofertas.ui.components.SegChoice
 import br.com.painelofertas.ui.LocalSnackbar
 import br.com.painelofertas.ui.rememberContainer
 import br.com.painelofertas.ui.theme.ledColorAt
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import br.com.painelofertas.ui.vm.AppViewModel
@@ -133,6 +140,7 @@ fun EditarScreen() {
     val nav: AppViewModel = viewModel()
     var msg by remember { mutableStateOf("") }
     val albuns by container.albums.names.collectAsState()
+    val historico by container.albums.history.collectAsState()
     val panels by container.panels.panels.collectAsState()
     val usbConnected by container.usb.connected.collectAsState()
     var confirmOverwrite by remember { mutableStateOf(false) }
@@ -218,6 +226,9 @@ fun EditarScreen() {
             if (ok) {
                 targetPanel?.let { container.panels.setExpectedCrc(it.ip, r.crc) }
                 vm.setLive(album, targetPanel?.crcPanel ?: 0, targetPanel?.id ?: "usb")
+                // guarda no histórico para repetir depois com um toque
+                val stamp = SimpleDateFormat("dd-MM HH'h'mm", Locale.getDefault()).format(Date())
+                container.albums.pushHistory(album, "${album.name} · $stamp")
                 vm.pubDone("✓ No painel agora")
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             } else {
@@ -245,14 +256,14 @@ fun EditarScreen() {
     // salva a cada mudança — o lojista não perde o que digitou se o app for morto.
     LaunchedEffect(Unit) {
         if (!vm.draftRestored) {
-            container.albums.loadDraft()?.let { if (it.frames.isNotEmpty()) vm.load(it) }
+            container.albums.loadDraftText()?.let { txt -> DraftCodec.decode(txt)?.let { vm.restoreDraft(it) } }
             vm.draftRestored = true
         }
     }
-    LaunchedEffect(vm.frames.toList(), vm.nome) {
+    LaunchedEffect(vm.frames.toList(), vm.nome, vm.portrait) {
         if (vm.draftRestored) {
             delay(600) // debounce: não grava a cada tecla
-            runCatching { container.albums.saveDraft(vm.toAlbum(fonts)) }
+            runCatching { container.albums.saveDraftText(DraftCodec.encode(vm.nome, vm.portrait, vm.frames.toList())) }
         }
     }
 
@@ -310,7 +321,34 @@ fun EditarScreen() {
             SectionLabel("Editor de telas")
             ScreensBar(vm) { showNameDialog = true }
             if (cur != null) {
-                PreviewPager(cur.build(fonts, vm.portrait), cur.halfScreen, vm.portrait, vm.liveAlbum, vm.sel, ledIdx)
+                val frameAtual = cur.build(fonts, vm.portrait)
+                PreviewPager(frameAtual, cur.halfScreen, vm.portrait, vm.liveAlbum, vm.sel, ledIdx)
+
+                // Aviso de conteúdo cortado: o painel é físico, o que passa some.
+                val over = remember(frameAtual, cur.halfScreen, vm.portrait) {
+                    AutoLayout.overflow(frameAtual.records, cur.halfScreen, vm.portrait, fonts)
+                }
+                androidx.compose.animation.AnimatedVisibility(over.houve) {
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                            .background(Accent.Amber.copy(alpha = 0.16f)).padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Icon(Icons.Filled.WarningAmber, null, tint = Accent.Amber, modifier = Modifier.size(18.dp))
+                        Text(
+                            buildString {
+                                append("Vai aparecer cortado no painel: passa ")
+                                if (over.larguraExcedida > 0) append("${over.larguraExcedida} px na largura")
+                                if (over.larguraExcedida > 0 && over.alturaExcedida > 0) append(" e ")
+                                if (over.alturaExcedida > 0) append("${over.alturaExcedida} px na altura")
+                                append(". Encurte o texto ou use uma fonte menor.")
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
             }
         }
 
@@ -393,7 +431,25 @@ fun EditarScreen() {
                             Icon(Icons.Filled.Download, null, Modifier.size(18.dp)); Spacer(Modifier.size(6.dp)); Text("Importar")
                         }
                     }
+                    // Histórico: repetir uma publicação anterior com um toque.
+                    if (historico.isNotEmpty()) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Icon(Icons.Filled.History, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Publicados recentemente — toque para repetir:", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            historico.forEach { h ->
+                                AssistChip(
+                                    onClick = { container.albums.loadHistory(h)?.let { vm.load(it); msg = "Recuperado: $h" } },
+                                    label = { Text(h, maxLines = 1) },
+                                )
+                            }
+                        }
+                    }
+
                     if (albuns.isNotEmpty()) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         Text("Álbuns salvos (toque para abrir, ✕ para excluir):", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                             albuns.forEach { a ->
@@ -818,9 +874,24 @@ private fun MsgForm(draft: FrameDraft.Msg, onChange: (FrameDraft.Msg) -> Unit) {
             }
         }
 
+        // Auto-justificar: o app centraliza e distribui sozinho no display.
+        Card(colors = accentCardColors(Accent.Teal)) {
+            Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                InlineToggle("Ajustar automaticamente", draft.autoFit) { onChange(draft.copy(autoFit = it)) }
+                Text(
+                    if (draft.autoFit) "O texto é centralizado e distribuído sozinho, na maior fonte que couber."
+                    else "Você escolhe linha, coluna e fonte de cada linha de texto.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
         SectionLabel("Linhas de texto")
         draft.lines.forEachIndexed { i, linha ->
-            LineCard(linha,
+            LineCard(
+                linha,
+                autoFit = draft.autoFit,
                 onChange = { nl -> onChange(draft.copy(lines = draft.lines.toMutableList().also { it[i] = nl })) },
                 onRemove = { onChange(draft.copy(lines = draft.lines.toMutableList().also { if (it.size > 1) it.removeAt(i) })) },
             )
@@ -832,20 +903,33 @@ private fun MsgForm(draft: FrameDraft.Msg, onChange: (FrameDraft.Msg) -> Unit) {
 }
 
 @Composable
-private fun LineCard(linha: LineDraft, onChange: (LineDraft) -> Unit, onRemove: () -> Unit) {
+private fun LineCard(linha: LineDraft, autoFit: Boolean, onChange: (LineDraft) -> Unit, onRemove: () -> Unit) {
     Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(12.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(linha.text, { onChange(linha.copy(text = it)) }, label = { Text("Texto") }, singleLine = true, modifier = Modifier.weight(1f))
-                IconButton(onClick = onRemove) { Icon(Icons.Filled.Delete, "Remover") }
+                IconButton(onClick = onRemove) { Icon(Icons.Filled.Delete, "Remover linha") }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                NumField("Linha", linha.row) { onChange(linha.copy(row = it)) }
-                NumField("Coluna", linha.col) { onChange(linha.copy(col = it)) }
+            // Com auto-ajuste, posição e fonte são calculadas — não há o que mexer.
+            androidx.compose.animation.AnimatedVisibility(!autoFit) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        NumField("Linha", linha.row) { onChange(linha.copy(row = it)) }
+                        NumField("Coluna", linha.col) { onChange(linha.copy(col = it)) }
+                    }
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        PanelFont.entries.forEach { f ->
+                            FilterChip(linha.font == f.code, { onChange(linha.copy(font = f.code)) }, { Text(f.displayName, style = MaterialTheme.typography.labelSmall) })
+                        }
+                    }
+                }
             }
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                PanelFont.entries.forEach { f ->
-                    FilterChip(linha.font == f.code, { onChange(linha.copy(font = f.code)) }, { Text(f.displayName, style = MaterialTheme.typography.labelSmall) })
+            androidx.compose.animation.AnimatedVisibility(autoFit) {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Tamanho máximo:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    PanelFont.entries.forEach { f ->
+                        FilterChip(linha.font == f.code, { onChange(linha.copy(font = f.code)) }, { Text(f.displayName, style = MaterialTheme.typography.labelSmall) })
+                    }
                 }
             }
         }

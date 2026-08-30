@@ -3,6 +3,7 @@ package br.com.painelofertas.editor
 import br.com.painelofertas.protocol.FrameType
 import br.com.painelofertas.protocol.PanelFrame
 import br.com.painelofertas.protocol.PanelRecord
+import br.com.painelofertas.render.AutoLayout
 import br.com.painelofertas.render.FontProvider
 import br.com.painelofertas.render.OfertaLayout
 import br.com.painelofertas.render.OfertaSpec
@@ -38,6 +39,8 @@ sealed interface FrameDraft {
         val border: Int = 0, // 0=sem, 1=segmentada, 2=contínua
         val enabled: Boolean = true,
         override val name: String = "",
+        /** Auto-justificar: o app centraliza e distribui o texto sozinho no display. */
+        val autoFit: Boolean = true,
     ) : FrameDraft {
         override fun build(fonts: FontProvider, portrait: Boolean) = PanelFrame(
             type = FrameType.MENSAGEM,
@@ -46,8 +49,18 @@ sealed interface FrameDraft {
             f3 = border == 2,
             f4 = border == 1,
             enabled = enabled,
-            records = lines.filter { it.text.isNotBlank() }
-                .map { PanelRecord.Text(9, it.row, it.col, it.font, it.text) },
+            records =
+                if (autoFit) {
+                    AutoLayout.layout(
+                        linhas = lines.map { it.text to it.font },
+                        halfScreen = halfScreen,
+                        portrait = portrait,
+                        fonts = fonts,
+                    )
+                } else {
+                    lines.filter { it.text.isNotBlank() }
+                        .map { PanelRecord.Text(9, it.row, it.col, it.font, it.text) }
+                },
         )
 
         override fun label() = "Mensagem"

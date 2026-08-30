@@ -19,6 +19,7 @@ import br.com.painelofertas.protocol.Album
 import br.com.painelofertas.protocol.AlbumCodec
 import br.com.painelofertas.protocol.BinaryCodec
 import br.com.painelofertas.render.FontRepository
+import br.com.painelofertas.schedule.Scheduler
 import br.com.painelofertas.transfer.TransferEngine
 import br.com.painelofertas.usb.UsbController
 import kotlinx.coroutines.CoroutineScope
@@ -33,6 +34,8 @@ import java.util.Calendar
  * repositórios). Uma única instância vive na [PainelApp].
  */
 class AppContainer(context: Context) {
+
+    private val appContext = context.applicationContext
 
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -61,7 +64,12 @@ class AppContainer(context: Context) {
         }
         runCatching { usb.start() }
         startScheduler()
+        // Agendamento em segundo plano (alarme do sistema): funciona com o app fechado.
+        runCatching { Scheduler.reschedule(appContext) }
     }
+
+    /** Reagenda o alarme do sistema — chamar após criar/remover tarefas na agenda. */
+    fun refreshAlarms() = runCatching { Scheduler.reschedule(appContext) }
 
     /**
      * IP do aparelho a usar na descoberta: SEMPRE o detectado agora (a rede pode ter

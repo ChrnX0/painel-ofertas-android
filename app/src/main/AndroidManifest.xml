@@ -7,9 +7,12 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
-    <!-- Serviço em primeiro plano para transferências/agendamentos confiáveis (fases futuras) -->
+    <!-- Serviço em primeiro plano: executa os envios agendados com o app fechado -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Recria os alarmes da agenda depois que o celular reinicia -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- USB Host / OTG: configuração do módulo WiFi (ESP-AT) via HID Microchip -->
     <uses-feature android:name="android.hardware.usb.host" android:required="false" />
@@ -41,6 +44,21 @@
                 android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
                 android:resource="@xml/usb_device_filter" />
         </activity>
+
+        <!-- Agendamento em segundo plano: alarme acorda o receiver, que sobe o serviço -->
+        <receiver
+            android:name=".schedule.ScheduleReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="br.com.painelofertas.AGENDA_DISPARO" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".schedule.ScheduleService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
     </application>
 
 </manifest>

@@ -144,6 +144,15 @@ class EditorViewModel : ViewModel() {
         selected = 0
     }
 
+    /** Restaura o rascunho salvo (nome, orientação e telas já editáveis). */
+    fun restoreDraft(d: Triple<String, Boolean, List<FrameDraft>>) {
+        nome = d.first
+        portrait = d.second
+        frames.clear()
+        frames.addAll(d.third)
+        selected = 0
+    }
+
     /** Começa um álbum novo em branco (uma Oferta), zerando a prévia ao vivo. */
     fun newAlbum() {
         nome = "Álbum 1"

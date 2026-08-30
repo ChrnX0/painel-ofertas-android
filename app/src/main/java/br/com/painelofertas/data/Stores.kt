@@ -48,15 +48,47 @@ class AlbumStore(context: Context) {
     // O trabalho em andamento é salvo continuamente num arquivo à parte, para o
     // lojista não perder o que digitou se o Android encerrar o app.
 
-    private val draftFile = File(dir.parentFile, "rascunho.alb")
+    // Guarda o ESTADO DO EDITOR (JSON com os campos), não o `.alb` renderizado —
+    // assim a Oferta volta editável campo-a-campo, e não como quadro "cru".
+    private val draftFile = File(dir.parentFile, "rascunho.json")
 
-    fun saveDraft(album: Album) {
-        runCatching { draftFile.writeText(album.toAlbText(), Charsets.ISO_8859_1) }
+    fun saveDraftText(json: String) {
+        runCatching { draftFile.writeText(json, Charsets.UTF_8) }
     }
 
-    fun loadDraft(): Album? =
-        runCatching { if (draftFile.exists()) Album.fromAlbText(draftFile.readText(Charsets.ISO_8859_1)) else null }
-            .getOrNull()
+    fun loadDraftText(): String? =
+        runCatching { if (draftFile.exists()) draftFile.readText(Charsets.UTF_8) else null }.getOrNull()
+
+    // ===== Histórico de publicações =====
+    // Guarda as últimas telas publicadas para o lojista repetir com um toque
+    // (ex.: a oferta de terça que volta na quinta), sem remontar tudo.
+
+    private val histDir = File(dir.parentFile, "historico").apply { mkdirs() }
+
+    private val _history = MutableStateFlow(scanHistory())
+    val history: StateFlow<List<String>> = _history.asStateFlow()
+
+    private fun scanHistory(): List<String> =
+        histDir.listFiles { f -> f.isFile && f.name.endsWith(".alb") }
+            ?.sortedByDescending { it.lastModified() }
+            ?.map { it.name.removeSuffix(".alb") }
+            ?: emptyList()
+
+    /** Registra uma publicação no histórico (mantém as [MAX_HISTORY] mais recentes). */
+    fun pushHistory(album: Album, rotulo: String) {
+        runCatching {
+            File(histDir, safe(rotulo) + ".alb").writeText(album.toAlbText(), Charsets.ISO_8859_1)
+            histDir.listFiles()?.sortedByDescending { it.lastModified() }?.drop(MAX_HISTORY)?.forEach { it.delete() }
+            _history.value = scanHistory()
+        }
+    }
+
+    fun loadHistory(rotulo: String): Album? {
+        val f = File(histDir, safe(rotulo) + ".alb")
+        return if (f.exists()) runCatching { Album.fromAlbText(f.readText(Charsets.ISO_8859_1)) }.getOrNull() else null
+    }
+
+    private companion object { const val MAX_HISTORY = 12 }
 }
 
 /** Configurações persistentes (era Advanced.dll/config.ini). */
