@@ -45,6 +45,8 @@ private class FakePanel(private val downloadData: IntArray = IntArray(0)) : Pane
             cmd.startsWith("INICIAR=") -> iniciarBrilho = cmd.removePrefix("INICIAR=").toInt()
         }
     }
+
+    override suspend fun sendPassword(codeBytes: IntArray) { /* não usado nestes testes */ }
 }
 
 class TransferEngineTest {
