@@ -54,10 +54,15 @@ import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Palette
 import br.com.painelofertas.protocol.BinaryCodec
+import br.com.painelofertas.net.UdpLink
+import br.com.painelofertas.render.PanelRenderer
 import br.com.painelofertas.ui.components.Accent
 import br.com.painelofertas.ui.components.Appear
 import br.com.painelofertas.ui.components.CardHeader
+import br.com.painelofertas.ui.components.EffectPicker
+import br.com.painelofertas.ui.components.PanelEffect
 import br.com.painelofertas.ui.components.accentCardColors
+import br.com.painelofertas.ui.theme.ledColorAt
 import br.com.painelofertas.ui.components.MonoText
 import br.com.painelofertas.ui.components.SectionLabel
 import br.com.painelofertas.ui.components.SegChoice
@@ -75,6 +80,9 @@ fun ConfigScreen() {
     val scroll = rememberScrollState()
 
     var efeito by remember { mutableIntStateOf(container.settings.effectMode) }
+    var efeitoMsg by remember { mutableStateOf("") }
+    val paineis by container.panels.panels.collectAsState()
+    val scope = rememberCoroutineScope()
 
     Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(16.dp)) {
         Appear {
@@ -133,16 +141,38 @@ fun ConfigScreen() {
         Appear(delayMillis = 130) {
             Card(Modifier.fillMaxWidth().padding(top = 8.dp), colors = accentCardColors(Accent.Teal)) {
                 Column(Modifier.padding(16.dp)) {
-                    CardHeader(Icons.Filled.AutoAwesome, Accent.Teal, "Efeito global das telas", "Como as telas trocam no painel.")
-                    Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        EFEITOS.forEachIndexed { i, nome ->
-                            FilterChip(
-                                selected = efeito == i,
-                                onClick = { efeito = i; container.settings.effectMode = i },
-                                label = { Text(nome, style = MaterialTheme.typography.labelSmall) },
-                            )
+                    CardHeader(Icons.Filled.AutoAwesome, Accent.Teal, "Efeito das telas no painel", "Toque para ver como fica — vale para todas as telas.")
+
+                    // Amostra usada nas miniaturas animadas (a palavra "OFERTA").
+                    val amostra = remember {
+                        PanelRenderer.render(
+                            listOf(br.com.painelofertas.protocol.PanelRecord.Text(9, 1, 2, 1, "OFERTA")),
+                            cols = 58, rows = 20, fonts = container.fonts,
+                        )
+                    }
+                    EffectPicker(
+                        amostra = amostra,
+                        selecionado = efeito,
+                        litColor = ledColorAt(ledColor),
+                        modifier = Modifier.padding(top = 12.dp),
+                    ) { novo ->
+                        efeito = novo
+                        container.settings.effectMode = novo
+                        // Aplica JÁ nos painéis conhecidos (antes só valia no próximo STATUS).
+                        scope.launch {
+                            paineis.forEach { p -> runCatching { UdpLink(p.ip, container.udp).sendText("ONLINE=$novo") } }
+                            if (paineis.isNotEmpty()) efeitoMsg = "Efeito aplicado em ${paineis.size} painel(is)."
                         }
                     }
+                    androidx.compose.animation.AnimatedVisibility(efeitoMsg.isNotBlank()) {
+                        MonoText(efeitoMsg, size = 11, color = Accent.Green, modifier = Modifier.padding(top = 8.dp))
+                    }
+                    Text(
+                        PanelEffect.entries.firstOrNull { it.index == efeito }?.descricao ?: "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
                 }
             }
         }

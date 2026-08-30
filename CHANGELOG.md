@@ -8,6 +8,30 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.40.0] — 2026-08-30 · `versionCode 42`
+
+### Adicionado
+- **Efeitos com prévia ao vivo**: cada opção (Padrão · Pisca/Inverte · Pisca/Padrão)
+  vira uma **mini-placa de LED animada** mostrando o efeito de verdade, com uma
+  frase explicando o que faz. O lojista vê antes de mandar
+- **Efeito aplicado na hora**: ao escolher, o app envia `ONLINE=<índice>` a todos os
+  painéis conhecidos e confirma. Antes só valia no próximo batimento de `STATUS`
+- **Identificação do módulo guardada**: a leitura de firmware/MAC/IP fica salva
+  (com "lido há…") para consulta e suporte, mesmo com o USB desconectado
+
+### Verificado no código-fonte original
+- Os efeitos do painel são **exatamente três** (`ONLINE=0|1|2`) e são **globais**.
+  **Não existe** efeito por tela: os campos `F3..F6` do cabeçalho de quadro são
+  flags de conteúdo (subtítulo/centavos na Oferta; tipo de borda na Mensagem) e o
+  byte empacotado não tem bit livre. Também **não existe** scroll, transição ou
+  animação no protocolo
+- **Atualização de firmware não existe** em nenhuma das 10 versões do fonte Delphi.
+  Ver `HANDOFF.md` → "Atualização de firmware": o painel tem dois processadores
+  (PIC gateway + ESP8266) e atualizar às cegas arrisca **brick sem recuperação**.
+  Documentadas as 6 informações que a LedBlock precisa fornecer para destravar
+
+---
+
 ## [0.39.0] — 2026-08-29 · `versionCode 41`
 
 ### Adicionado

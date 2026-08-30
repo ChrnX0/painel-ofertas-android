@@ -118,6 +118,19 @@ class SettingsStore(context: Context) {
         get() = prefs.getString("txPassword", "") ?: ""
         set(v) = prefs.edit().putString("txPassword", v).apply()
 
+    /**
+     * Última identificação lida do módulo Wi-Fi (firmware/MAC/IP + quando).
+     * Fica guardada para consulta e para informar a LedBlock em caso de suporte —
+     * o app Windows original nunca lia isso.
+     */
+    var firmwareInfo: String
+        get() = prefs.getString("firmwareInfo", "") ?: ""
+        set(v) = prefs.edit().putString("firmwareInfo", v).apply()
+
+    var firmwareLidoEm: Long
+        get() = prefs.getLong("firmwareLidoEm", 0L)
+        set(v) = prefs.edit().putLong("firmwareLidoEm", v).apply()
+
     /** O guia de primeira execução já foi dispensado? */
     var onboardingDone: Boolean
         get() = prefs.getBoolean("onboardingDone", false)

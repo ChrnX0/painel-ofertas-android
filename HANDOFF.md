@@ -161,6 +161,45 @@ precisaríamos de informação de vocês:
 
 ---
 
+## 🔧 Atualização de firmware — o que falta para ser possível
+
+O app **lê** a identificação do módulo Wi-Fi (`AT+GMR`, MAC e IP) e guarda para
+consulta — algo que o app Windows original **nunca fez**. Mas **não atualiza
+firmware**, e isso é uma decisão deliberada de segurança.
+
+**Por quê.** O painel tem **dois processadores**: o **PIC/Microchip** (ponte USB
+HID, VID `0x04D8` / PID `0xF002`) e o **ESP8266** (Wi-Fi, firmware ESP-AT). O PC
+**nunca fala direto com o ESP** — tudo passa pelo PIC via `CMD=<AT...>`. Se o
+firmware do PIC for corrompido, **morre o único caminho de comunicação** e não há
+rota de recuperação conhecida. Uma varredura em todas as 10 versões do fonte
+Delphi original confirmou: **não existe nenhuma rotina de atualização** (nem
+`AT+CIUPDATE`, OTA, bootloader, XMODEM, esptool ou upload de `.bin`).
+
+Riscos concretos de tentar às cegas:
+- **Brick sem recuperação** do PIC (gateway obrigatório).
+- `AT+CIUPDATE` (OTA do ESP) baixa de servidor da Espressif, pode não ter a versão,
+  e **apagaria o `AT+SAVETRANSLINK`** — derrubando todos os painéis do parque, que
+  precisariam de reconfiguração física por USB, um a um.
+- O canal UDP 17065 é **texto claro sem autenticação** (só `APAGAR=` tem token):
+  um caminho de flash por rede criaria um vetor de brick remoto na loja.
+
+**Para destravar, precisamos de vocês:**
+
+| # | Informação | Por que é bloqueante |
+|---|---|---|
+| 1 | Firmware/fonte do **PIC** e o procedimento oficial de atualização | Nada dele existe no material recebido |
+| 2 | O PIC tem **bootloader** por USB (HID Bootloader Microchip) ou só ICSP? | Define se dá para atualizar por cabo ou se exige gravador e abrir o equipamento |
+| 3 | Semântica do **`RundLB.dll`** (executor de script oculto no app original, acionado clicando no texto de copyright — envia cada linha do arquivo direto ao PIC) | É o único mecanismo candidato que já existe; sem doc, pode escrever em área persistente de forma irreversível |
+| 4 | Versão do **ESP-AT** homologada por vocês | Determina se OTA é viável |
+| 5 | O que são os **campos 2 e 3 do `STATUS=`**? | O app original nunca os lê; podem conter versão/modelo |
+| 6 | O ESP tem **serial/GPIO0 acessível** na placa? | Se sim, `esptool` local é o caminho padrão e seguro — fora do app |
+
+**Recomendação:** enquanto não houver essa documentação, atualização de firmware
+deve ser feita **presencialmente** pela LedBlock (ICSP no PIC, serial no ESP), em
+bancada — **nunca pela rede** e **nunca em painel instalado em cliente**.
+
+---
+
 O código foi revisado por duas auditorias (correção/robustez e UI/UX); os pontos
 achados foram corrigidos. Verificados contra o `Ofertas.pas` original: CRC,
 extração de campos, tabela de duração, campos do `STATUS=`, layout dos pacotes

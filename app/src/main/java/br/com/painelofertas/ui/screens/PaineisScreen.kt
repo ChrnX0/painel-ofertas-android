@@ -226,8 +226,17 @@ private fun DiagnosticoCard() {
                         scope.launch {
                             val r = runCatching { WifiModuleConfigurator(link).probe() }.getOrNull()
                             probe = r
-                            probeMsg = if (r == null || (r.firmware.isEmpty() && r.mac.isBlank()))
-                                "Sem resposta do módulo (verifique o cabo/OTG)." else ""
+                            val vazio = r == null || (r.firmware.isEmpty() && r.mac.isBlank())
+                            probeMsg = if (vazio) "Sem resposta do módulo (verifique o cabo/OTG)." else ""
+                            // Guarda a identificação para consulta/suporte, mesmo desconectado.
+                            if (!vazio && r != null) {
+                                container.settings.firmwareInfo = buildString {
+                                    if (r.mac.isNotBlank()) appendLine("MAC: ${r.mac}")
+                                    if (r.ip.isNotBlank()) appendLine("IP: ${r.ip}")
+                                    r.firmware.forEach { appendLine(it) }
+                                }.trim()
+                                container.settings.firmwareLidoEm = System.currentTimeMillis()
+                            }
                             probing = false
                         }
                     },
@@ -246,6 +255,23 @@ private fun DiagnosticoCard() {
             paineis.firstOrNull()?.let { p ->
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 MonoText("memória livre (${p.name}): ${p.freeMemory} bytes", size = 11)
+            }
+
+            // Última identificação lida — fica guardada para consulta e suporte.
+            val fwSalvo = container.settings.firmwareInfo
+            if (fwSalvo.isNotBlank() && probe == null) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                SectionLabel("Última leitura do módulo")
+                MonoText(fwSalvo, size = 10)
+                MonoText("lido ${agoText(container.settings.firmwareLidoEm)}", size = 9, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (fwSalvo.isNotBlank() || probe != null) {
+                Text(
+                    "Atualização de firmware não é feita por aqui: o procedimento oficial é da LedBlock " +
+                        "(fabricante). Informe estes dados ao suporte se precisar atualizar.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

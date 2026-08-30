@@ -20,6 +20,8 @@ fun PanelPreview(
     litColor: Color = Color(0xFFFFB300),
     offColor: Color = Color(0x12FFFFFF),
     showOff: Boolean = true,
+    /** Inverte aceso/apagado — usado para mostrar o efeito "Pisca / Inverte". */
+    inverted: Boolean = false,
 ) {
     Canvas(modifier) {
         val cols = bitmap.cols
@@ -38,7 +40,7 @@ fun PanelPreview(
                 val cx = offX + c * cell + cell / 2f
                 val cy = offY + r * cell + cell / 2f
                 val center = Offset(cx, cy)
-                if (bitmap.isLit(r, c)) {
+                if (bitmap.isLit(r, c) != inverted) {
                     // halo externo + interno (bloom)
                     drawCircle(litColor.copy(alpha = 0.09f), radius = cell * 0.95f, center = center)
                     drawCircle(litColor.copy(alpha = 0.20f), radius = cell * 0.60f, center = center)
