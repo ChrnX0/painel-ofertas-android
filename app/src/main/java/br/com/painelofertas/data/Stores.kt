@@ -166,6 +166,7 @@ class PairedPanelsStore(context: Context) : PanelStore {
                     expectedCrc = o.optInt("expectedCrc", 0),
                     lastSeen = o.optLong("lastSeen", 0),
                     note = o.optString("note"),
+                    group = o.optString("group"),
                     ssid = o.optString("ssid"),
                     wifiPassword = o.optString("wifiPassword"),
                     dhcp = o.optBoolean("dhcp", true),
@@ -189,7 +190,8 @@ class PairedPanelsStore(context: Context) : PanelStore {
                     .put("id", p.id).put("name", p.name).put("ip", p.ip)
                     .put("brightness", p.brightness).put("sensorAuto", p.sensorAuto)
                     .put("expectedCrc", p.expectedCrc).put("lastSeen", p.lastSeen)
-                    .put("note", p.note).put("ssid", p.ssid).put("wifiPassword", p.wifiPassword)
+                    .put("note", p.note).put("group", p.group)
+                    .put("ssid", p.ssid).put("wifiPassword", p.wifiPassword)
                     .put("dhcp", p.dhcp).put("staticIp", p.staticIp)
                     .put("gateway", p.gateway).put("netmask", p.netmask),
             )

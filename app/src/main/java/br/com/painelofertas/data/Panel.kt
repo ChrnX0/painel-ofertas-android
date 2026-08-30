@@ -30,6 +30,8 @@ data class Panel(
     val lastSeen: Long = 0,
     /** Apelido/observação livre do lojista (ex.: "vitrine", "corredor 3"). */
     val note: String = "",
+    /** Grupo/setor do painel (ex.: "Açougue") — permite enviar a todos de uma vez. */
+    val group: String = "",
     /** Rede que este painel deve usar (lembrada por painel, editável no card). */
     val ssid: String = "",
     val wifiPassword: String = "",
@@ -134,20 +136,28 @@ class PanelRepository(private val store: PanelStore? = null) {
         persistUpdate { list -> list.map { if (it.ip == ip) it.copy(expectedCrc = crc) else it } }
     }
 
-    /** Salva a configuração editável do painel: apelido/observação + rede própria. */
+    /** Salva a configuração editável do painel: apelido, grupo e rede própria. */
     fun setConfig(
-        id: String, note: String, ssid: String, wifiPassword: String,
+        id: String, note: String, group: String, ssid: String, wifiPassword: String,
         dhcp: Boolean, staticIp: String, gateway: String, netmask: String,
     ) {
         persistUpdate { list ->
             list.map {
                 if (it.id == id) it.copy(
-                    note = note, ssid = ssid, wifiPassword = wifiPassword,
+                    note = note, group = group, ssid = ssid, wifiPassword = wifiPassword,
                     dhcp = dhcp, staticIp = staticIp, gateway = gateway, netmask = netmask,
                 ) else it
             }
         }
     }
+
+    /** Grupos existentes (ex.: Açougue, Hortifruti), em ordem alfabética. */
+    fun groups(): List<String> =
+        _panels.value.map { it.group.trim() }.filter { it.isNotBlank() }.distinct().sorted()
+
+    /** IPs dos painéis de um grupo — destino do envio em massa. */
+    fun ipsOfGroup(group: String): List<String> =
+        _panels.value.filter { it.group.trim().equals(group.trim(), ignoreCase = true) }.map { it.ip }
 
     fun remove(id: String) {
         persistUpdate { list -> list.filterNot { it.id == id } }

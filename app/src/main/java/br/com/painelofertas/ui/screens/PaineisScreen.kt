@@ -159,8 +159,8 @@ fun PaineisScreen() {
                         onDesligar = { cmd("ONOFF=0") },
                         onRename = { container.panels.rename(p.id, it) },
                         onDelete = { container.panels.remove(p.id) },
-                        onSaveConfig = { note, ssid, senha, dhcp, sip, gw, mask ->
-                            container.panels.setConfig(p.id, note, ssid, senha, dhcp, sip, gw, mask)
+                        onSaveConfig = { note, grupo, ssid, senha, dhcp, sip, gw, mask ->
+                            container.panels.setConfig(p.id, note, grupo, ssid, senha, dhcp, sip, gw, mask)
                         },
                         onApplyUsb = { ssid, senha, dhcp, sip, gw, mask ->
                             container.usb.link.value?.let { link ->
@@ -387,7 +387,7 @@ private fun PanelCard(
     onDesligar: () -> Unit,
     onRename: (String) -> Unit,
     onDelete: () -> Unit,
-    onSaveConfig: (String, String, String, Boolean, String, String, String) -> Unit,
+    onSaveConfig: (String, String, String, String, Boolean, String, String, String) -> Unit,
     onApplyUsb: (String, String, Boolean, String, String, String) -> Unit,
 ) {
     var nome by remember(p.id) { mutableStateOf(p.name) }
@@ -450,11 +450,12 @@ private fun PanelCard(
 private fun PanelConfigSection(
     p: Panel,
     usbConnected: Boolean,
-    onSaveConfig: (String, String, String, Boolean, String, String, String) -> Unit,
+    onSaveConfig: (String, String, String, String, Boolean, String, String, String) -> Unit,
     onApplyUsb: (String, String, Boolean, String, String, String) -> Unit,
 ) {
     var expanded by remember(p.id) { mutableStateOf(false) }
     var note by remember(p.id, p.note) { mutableStateOf(p.note) }
+    var grupo by remember(p.id, p.group) { mutableStateOf(p.group) }
     var ssid by remember(p.id, p.ssid) { mutableStateOf(p.ssid) }
     var senha by remember(p.id, p.wifiPassword) { mutableStateOf(p.wifiPassword) }
     var dhcp by remember(p.id, p.dhcp) { mutableStateOf(p.dhcp) }
@@ -476,6 +477,12 @@ private fun PanelConfigSection(
         androidx.compose.animation.AnimatedVisibility(expanded) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(note, { note = it; saved = false }, label = { Text("Apelido / observação") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    grupo, { grupo = it; saved = false },
+                    label = { Text("Grupo / setor (ex.: Açougue)") },
+                    supportingText = { Text("Painéis do mesmo grupo recebem o envio juntos.") },
+                    singleLine = true, modifier = Modifier.fillMaxWidth(),
+                )
                 Text(
                     "Rede que este painel usa (aplicada por cabo USB).",
                     style = MaterialTheme.typography.bodySmall,
@@ -497,7 +504,7 @@ private fun PanelConfigSection(
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { onSaveConfig(note, ssid, senha, dhcp, sip, gw, mask); saved = true }, shape = ButtonShape) { Text("Salvar") }
+                    Button(onClick = { onSaveConfig(note, grupo, ssid, senha, dhcp, sip, gw, mask); saved = true }, shape = ButtonShape) { Text("Salvar") }
                     OutlinedButton(onClick = { onApplyUsb(ssid, senha, dhcp, sip, gw, mask) }, enabled = usbConnected, shape = ButtonShape) { Text("Aplicar via USB") }
                 }
                 if (saved) Text("✓ Salvo neste aparelho.", style = MaterialTheme.typography.bodySmall, color = Accent.Green)

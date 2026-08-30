@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -183,6 +184,23 @@ fun EnviarScreen() {
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             } else {
+                                // Grupos: um toque marca todos os painéis do setor.
+                                val grupos = remember(panels) { container.panels.groups() }
+                                if (grupos.isNotEmpty()) {
+                                    Text("Grupos:", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        grupos.forEach { g ->
+                                            val ips = container.panels.ipsOfGroup(g)
+                                            val todosMarcados = ips.isNotEmpty() && varios.containsAll(ips)
+                                            FilterChip(
+                                                selected = todosMarcados,
+                                                onClick = { varios = if (todosMarcados) varios - ips.toSet() else varios + ips },
+                                                label = { Text("$g (${ips.size})") },
+                                                leadingIcon = { Icon(Icons.Filled.Groups, null, Modifier.size(16.dp)) },
+                                            )
+                                        }
+                                    }
+                                }
                                 Text(
                                     "Toque para escolher um, ou marque vários para enviar a todos:",
                                     style = MaterialTheme.typography.bodySmall,

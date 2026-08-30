@@ -8,6 +8,20 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.39.0] — 2026-08-29 · `versionCode 41`
+
+### Adicionado
+- **Grupos de painéis**: cada painel ganha um **grupo/setor** (ex.: "Açougue"). Na
+  aba Enviar aparecem os grupos — **um toque marca todos os painéis do setor** e o
+  envio vai para o grupo inteiro
+- **Importar planilha de preços** (CSV/TXT do Excel, Sheets ou PDV) direto no
+  diálogo de criação em lote: `PICANHA;9,90;O KILO` vira a oferta pronta.
+  Reconhece `;`, tabulação e vírgula, **sem confundir a vírgula decimal de 9,90**;
+  normaliza `12.50` → `12,50`, ignora cabeçalho e aspas, aceita CRLF do Windows
+- +10 testes (`PriceListParserTest`) com os formatos reais de planilha
+
+---
+
 ## [0.38.0] — 2026-08-29 · `versionCode 40`
 
 ### Adicionado

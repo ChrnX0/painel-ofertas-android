@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
@@ -97,6 +98,7 @@ import br.com.painelofertas.data.PanelStatus
 import br.com.painelofertas.editor.DraftCodec
 import br.com.painelofertas.editor.FrameDraft
 import br.com.painelofertas.editor.LineDraft
+import br.com.painelofertas.editor.PriceListParser
 import br.com.painelofertas.net.Encriptor
 import br.com.painelofertas.net.PanelLink
 import br.com.painelofertas.net.UdpLink
@@ -849,7 +851,21 @@ private fun NovaTelaDialog(
 private fun LoteDialog(onDismiss: () -> Unit, onCriar: (String, Boolean) -> Unit) {
     var texto by remember { mutableStateOf("") }
     var substituir by remember { mutableStateOf(false) }
+    var aviso by remember { mutableStateOf("") }
     val linhas = texto.split('\n').count { it.isNotBlank() }
+
+    // Importar planilha de preços (CSV/TXT exportado do Excel, Sheets ou PDV).
+    val ctx = LocalContext.current
+    val importar = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching {
+                val bruto = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) } ?: ""
+                val ofertas = PriceListParser.parse(bruto)
+                if (ofertas.isEmpty()) aviso = "Não encontrei ofertas nesse arquivo."
+                else { texto = ofertas.joinToString("\n"); aviso = "${ofertas.size} oferta(s) lida(s) da planilha." }
+            }.onFailure { aviso = "Não consegui ler o arquivo." }
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -862,6 +878,17 @@ private fun LoteDialog(onDismiss: () -> Unit, onCriar: (String, Boolean) -> Unit
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                AccentOutlinedButton(
+                    onClick = { importar.launch(arrayOf("*/*")) },
+                    accent = Accent.Blue,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Filled.TableChart, null, Modifier.size(18.dp)); Spacer(Modifier.size(6.dp))
+                    Text("Importar planilha de preços")
+                }
+                if (aviso.isNotBlank()) {
+                    MonoText(aviso, size = 11, color = Accent.Teal)
+                }
                 OutlinedTextField(
                     texto, { texto = it },
                     label = { Text("Lista de ofertas") },
