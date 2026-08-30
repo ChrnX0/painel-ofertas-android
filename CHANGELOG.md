@@ -8,6 +8,22 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.37.0] — 2026-08-29 · `versionCode 39`
+
+### Adicionado
+- **Composição inteligente — digitar vira desenhar**: escreva `PICANHA 9,90 O KILO`
+  numa linha só e o app **reconhece o preço**, separa em três linhas e monta o
+  cartaz com **hierarquia**: o preço em letra grande, produto e medida menores.
+  É o que faz uma oferta parecer profissional
+- Reconhece `9,90`, `12.50`, `1.234,56`; **não** confunde com `100 G` ou `CX 12`
+  (exige separador decimal). Respeita as quebras que o usuário digitar
+- A UI confirma o que entendeu: *"Reconheci 9,90 como preço — vai em letra grande"*
+- Interruptor **Destacar o preço** para desligar e voltar ao tamanho uniforme
+- +6 testes (15 no total em `AutoLayoutTest`), cobrindo separação, formatos de
+  preço, falsos positivos e a garantia de hierarquia
+
+---
+
 ## [0.36.0] — 2026-08-29 · `versionCode 38`
 
 ### Adicionado

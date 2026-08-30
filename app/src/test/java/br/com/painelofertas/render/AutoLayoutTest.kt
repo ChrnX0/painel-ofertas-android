@@ -90,6 +90,51 @@ class AutoLayoutTest {
         assertEquals(0, fit.records.first().col)
     }
 
+    // ===== Composição inteligente (destaque do preço) =====
+
+    @Test
+    fun `separa produto preco e medida de uma linha so`() {
+        val partes = AutoLayout.smartSplit("PICANHA 9,90 O KILO")
+        assertEquals(listOf("PICANHA", "9,90", "O KILO"), partes.map { it.text })
+        assertEquals(listOf(false, true, false), partes.map { it.hero })
+    }
+
+    @Test
+    fun `reconhece preco com ponto e com milhar`() {
+        assertEquals("12.50", AutoLayout.smartSplit("QUEIJO 12.50 KG").first { it.hero }.text)
+        assertEquals("1.234,56", AutoLayout.smartSplit("TV 1.234,56 A VISTA").first { it.hero }.text)
+    }
+
+    @Test
+    fun `nao confunde medida com preco`() {
+        // "100 G" e "CX 12" nao tem separador decimal: nada vira destaque.
+        assertTrue(AutoLayout.smartSplit("PRESUNTO 100 G").none { it.hero })
+        assertTrue(AutoLayout.smartSplit("CERVEJA CX 12").none { it.hero })
+    }
+
+    @Test
+    fun `respeita as quebras do usuario e so marca o preco`() {
+        val partes = AutoLayout.smartSplit("OFERTA\n9,90\nO KILO")
+        assertEquals(listOf("OFERTA", "9,90", "O KILO"), partes.map { it.text })
+        assertEquals(1, partes.count { it.hero })
+    }
+
+    @Test
+    fun `preco fica maior que o resto do texto`() {
+        val fit = AutoLayout.smartFit("PICANHA 9,90 O KILO", halfScreen = true, portrait = false, fonts = fakeFonts)
+        assertTrue(fit.fits)
+        val preco = fit.records.first { it.text == "9,90" }
+        val outros = fit.records.filter { it.text != "9,90" }
+        assertTrue("o preco deveria usar fonte maior", outros.all { it.font < preco.font })
+    }
+
+    @Test
+    fun `sem preco a composicao inteligente cai no ajuste normal`() {
+        val fit = AutoLayout.smartFit("BEM VINDOS", halfScreen = true, portrait = false, fonts = fakeFonts)
+        assertTrue(fit.fits)
+        assertTrue(fit.records.map { it.font }.distinct().size == 1)
+    }
+
     @Test
     fun `texto vazio nao gera registros`() {
         val fit = AutoLayout.fitParagraph("   ", halfScreen = true, portrait = false, fonts = fakeFonts)

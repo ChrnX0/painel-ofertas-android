@@ -47,6 +47,8 @@ sealed interface FrameDraft {
         val align: AutoLayout.Align = AutoLayout.Align.CENTER,
         /** Teto de tamanho no modo automático (o app pode usar menor para caber). */
         val maxFont: Int = 4,
+        /** Composição inteligente: reconhece o preço e o coloca em destaque. */
+        val smart: Boolean = true,
     ) : FrameDraft {
         override fun build(fonts: FontProvider, portrait: Boolean) = PanelFrame(
             type = FrameType.MENSAGEM,
@@ -57,15 +59,13 @@ sealed interface FrameDraft {
             enabled = enabled,
             records =
                 if (autoFit) {
-                    // Texto corrido ajustado à tela (quebra + maior fonte que couber).
-                    AutoLayout.fitParagraph(
-                        texto = textoParaAjuste(),
-                        halfScreen = halfScreen,
-                        portrait = portrait,
-                        fonts = fonts,
-                        maxFont = maxFont,
-                        align = align,
-                    ).records
+                    // Texto ajustado à tela. No modo inteligente, o preço vira destaque.
+                    val f = if (smart) {
+                        AutoLayout.smartFit(textoParaAjuste(), halfScreen, portrait, fonts, maxFont, align)
+                    } else {
+                        AutoLayout.fitParagraph(textoParaAjuste(), halfScreen, portrait, fonts, maxFont, align)
+                    }
+                    f.records
                 } else {
                     lines.filter { it.text.isNotBlank() }
                         .map { PanelRecord.Text(9, it.row, it.col, it.font, it.text) }

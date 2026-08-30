@@ -917,8 +917,12 @@ private fun AutoTextCard(draft: FrameDraft.Msg, onChange: (FrameDraft.Msg) -> Un
     val fonts = rememberContainer().fonts
     val texto = draft.textoParaAjuste()
 
-    val fit = remember(texto, draft.halfScreen, draft.maxFont, draft.align) {
-        AutoLayout.fitParagraph(texto, draft.halfScreen, portrait = false, fonts = fonts, maxFont = draft.maxFont, align = draft.align)
+    val fit = remember(texto, draft.halfScreen, draft.maxFont, draft.align, draft.smart) {
+        if (draft.smart) AutoLayout.smartFit(texto, draft.halfScreen, false, fonts, draft.maxFont, draft.align)
+        else AutoLayout.fitParagraph(texto, draft.halfScreen, false, fonts, draft.maxFont, draft.align)
+    }
+    val destaque = remember(texto, draft.smart) {
+        if (draft.smart) AutoLayout.smartSplit(texto).firstOrNull { it.hero }?.text else null
     }
 
     Card {
@@ -928,10 +932,24 @@ private fun AutoTextCard(draft: FrameDraft.Msg, onChange: (FrameDraft.Msg) -> Un
                 value = texto,
                 onValueChange = { onChange(draft.copy(freeText = it)) },
                 label = { Text("Escreva o que aparece no painel") },
-                placeholder = { Text("Ex.: PROMOÇÃO DO DIA\nPICANHA MACIA") },
+                placeholder = { Text("Ex.: PICANHA 9,90 O KILO") },
                 minLines = 3,
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            // Composição inteligente: reconhece o preço e o coloca em destaque.
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                InlineToggle("Destacar o preço", draft.smart) { onChange(draft.copy(smart = it)) }
+                Text(
+                    when {
+                        !draft.smart -> "Todas as linhas com o mesmo tamanho."
+                        destaque != null -> "Reconheci \"$destaque\" como preço — vai em letra grande."
+                        else -> "Escreva um preço (ex.: 9,90) e ele ganha destaque automaticamente."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (destaque != null) Accent.Teal else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
 
             // O que o app decidiu — transparência sobre o ajuste automático.
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -943,7 +961,8 @@ private fun AutoTextCard(draft: FrameDraft.Msg, onChange: (FrameDraft.Msg) -> Un
                 )
                 MonoText(
                     if (fit.lines.isEmpty()) "escreva algo acima"
-                    else "${fit.lines.size} linha(s) · fonte ${PanelFont.of(fit.fontCode).displayName}" +
+                    else "${fit.lines.size} linha(s)" +
+                        (if (destaque != null) " · destaque ${PanelFont.of(fit.fontCode).displayName}" else " · fonte ${PanelFont.of(fit.fontCode).displayName}") +
                         if (fit.fits) "" else " · não cabe nem no menor tamanho",
                     size = 11,
                     color = if (fit.fits) MaterialTheme.colorScheme.onSurfaceVariant else Accent.Amber,

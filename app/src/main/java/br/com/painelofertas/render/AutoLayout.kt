@@ -207,6 +207,126 @@ object AutoLayout {
         }
     }
 
+    // ===================== COMPOSIÇÃO INTELIGENTE =====================
+
+    /** Uma linha já classificada: [hero] = é o destaque (o preço) da tela. */
+    data class SmartLine(val text: String, val hero: Boolean)
+
+    /**
+     * Reconhece um preço no texto: "9,90", "12.50", "19,90", "1.234,56".
+     * Exige separador decimal para não confundir com "100 G" ou "CX 12".
+     */
+    private val PRECO = Regex("""(?<![\d,.])\d{1,3}(?:\.\d{3})*[,.]\d{2}(?![\d,.])""")
+
+    /**
+     * Separa o texto em linhas com hierarquia, como um cartaz de oferta:
+     * `PICANHA 9,90 O KILO` vira **PICANHA** / **9,90** (destaque) / **O KILO**.
+     *
+     * Se o usuário já quebrou as linhas, respeita a quebra dele e apenas marca
+     * qual é o preço.
+     */
+    fun smartSplit(texto: String): List<SmartLine> = buildList {
+        for (linha in texto.split('\n')) {
+            val t = linha.trim()
+            if (t.isEmpty()) continue
+            val m = PRECO.find(t)
+            if (m == null) {
+                add(SmartLine(t, hero = false))
+            } else {
+                val antes = t.substring(0, m.range.first).trim()
+                val depois = t.substring(m.range.last + 1).trim()
+                if (antes.isNotEmpty()) add(SmartLine(antes, hero = false))
+                add(SmartLine(m.value, hero = true))
+                if (depois.isNotEmpty()) add(SmartLine(depois, hero = false))
+            }
+        }
+    }
+
+    /**
+     * **Composição inteligente**: diagrama o texto dando ao preço o maior tamanho
+     * possível e aos demais um tamanho menor, preenchendo bem o painel.
+     *
+     * Busca o par (fonte do destaque, fonte do resto) que caiba, priorizando um
+     * destaque grande — é o que dá cara de cartaz profissional.
+     */
+    fun smartFit(
+        texto: String,
+        halfScreen: Boolean,
+        portrait: Boolean,
+        fonts: FontProvider,
+        maxFont: Int = 4,
+        align: Align = Align.CENTER,
+    ): Fit {
+        val linhas = smartSplit(texto)
+        if (linhas.isEmpty()) return Fit(emptyList(), 0, emptyList(), true)
+        // Sem preço reconhecido, é o ajuste normal (tudo do mesmo tamanho).
+        if (linhas.none { it.hero }) {
+            return fitParagraph(texto, halfScreen, portrait, fonts, maxFont, align)
+        }
+
+        val (cols, rows) = panelDims(halfScreen, portrait)
+        val teto = maxFont.coerceIn(0, 4)
+
+        // 1ª tentativa: HIERARQUIA de verdade — o resto sempre menor que o destaque.
+        // (Sem isto, quando tudo cabe no tamanho máximo o preço não se destacaria.)
+        for (fonteHero in teto downTo 1) {
+            for (fonteResto in (fonteHero - 1) downTo 0) {
+                montar(linhas, fonteHero, fonteResto, cols, rows, fonts, align)?.let { return it }
+            }
+        }
+        // 2ª tentativa: não coube com hierarquia — aceita tudo do mesmo tamanho.
+        for (fonte in teto downTo 0) {
+            montar(linhas, fonte, fonte, cols, rows, fonts, align)?.let { return it }
+        }
+        // Nada coube: usa o menor tamanho em tudo e sinaliza.
+        val fallback = fitParagraph(texto, halfScreen, portrait, fonts, maxFont = 0, align = align)
+        return fallback.copy(fits = false)
+    }
+
+    /** Tenta montar o cartaz com os tamanhos dados; null se não couber. */
+    private fun montar(
+        linhas: List<SmartLine>,
+        fonteHero: Int,
+        fonteResto: Int,
+        cols: Int,
+        rows: Int,
+        fonts: FontProvider,
+        align: Align,
+    ): Fit? {
+        // Cada linha lógica pode virar várias, se precisar quebrar.
+        data class Pedaco(val texto: String, val fonte: Int)
+        val pedacos = mutableListOf<Pedaco>()
+        for (l in linhas) {
+            val fonte = if (l.hero) fonteHero else fonteResto
+            val quebradas = wrap(l.text, fonte, cols, fonts)
+            if (quebradas.isEmpty()) return null
+            // O destaque não deve quebrar: se quebrou, este tamanho não serve.
+            if (l.hero && quebradas.size > 1) return null
+            quebradas.forEach { pedacos.add(Pedaco(it, fonte)) }
+        }
+
+        val alturas = pedacos.map { fonts.font(it.fonte).height }
+        val gaps = pedacos.indices.drop(1).map { entrelinha(alturas[it]) }
+        val total = alturas.sum() + gaps.sum()
+        if (total > rows) return null
+        if (pedacos.any { fonts.font(it.fonte).measure(AccentMap.normalize(it.texto)) > cols }) return null
+
+        var y = ((rows - total) / 2).coerceAtLeast(0)
+        val records = pedacos.mapIndexed { i, p ->
+            val f = fonts.font(p.fonte)
+            val larg = f.measure(AccentMap.normalize(p.texto))
+            val x = when (align) {
+                Align.LEFT -> 0
+                Align.RIGHT -> (cols - larg).coerceAtLeast(0)
+                Align.CENTER -> ((cols - larg) / 2).coerceAtLeast(0)
+            }
+            val rec = PanelRecord.Text(SLOT_LINHA_MENSAGEM, y, x, p.fonte, p.texto)
+            y += alturas[i] + (gaps.getOrNull(i) ?: 0)
+            rec
+        }
+        return Fit(records, fonteHero, pedacos.map { it.texto }, fits = true)
+    }
+
     /** O que estourou o painel (em pixels), se algo estourou. */
     data class Overflow(val larguraExcedida: Int, val alturaExcedida: Int) {
         val houve: Boolean get() = larguraExcedida > 0 || alturaExcedida > 0

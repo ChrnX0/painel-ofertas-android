@@ -55,6 +55,7 @@ object DraftCodec {
             put("freeText", d.freeText)
             put("align", d.align.name)
             put("maxFont", d.maxFont)
+            put("smart", d.smart)
             put("linhas", JSONArray().also { arr ->
                 d.lines.forEach { l ->
                     arr.put(JSONObject().apply {
@@ -102,6 +103,7 @@ object DraftCodec {
                 align = runCatching { AutoLayout.Align.valueOf(o.optString("align", "CENTER")) }
                     .getOrDefault(AutoLayout.Align.CENTER),
                 maxFont = o.optInt("maxFont", 4),
+                smart = o.optBoolean("smart", true),
             )
         }
         else -> null // "cru" não é restaurável campo-a-campo
