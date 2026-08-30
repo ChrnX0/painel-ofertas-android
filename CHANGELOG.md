@@ -8,6 +8,29 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.41.0] — 2026-08-30 · `versionCode 43`
+
+### Adicionado
+- **Leitura de NFC — o app já está pronto para painéis com a tecnologia**: encostar
+  o celular numa etiqueta identifica o painel (id, nome, IP, grupo), registra na
+  lista e abre a aba Painéis. Não depende do protocolo do painel, só do NFC do
+  celular — funciona hoje com etiqueta colada e funcionará direto quando vier de
+  fábrica
+- Formato documentado e **tolerante** (`nfc/PanelTag.kt`): registro NDEF de texto
+  ou URI `ledblock://`, com `lb=1` obrigatório para **ignorar crachás e cartões**
+  de outros sistemas. Chaves desconhecidas são ignoradas, então etiquetas gravadas
+  por versões futuras continuam legíveis
+- +7 testes (`PanelTagTest`), incluindo ida-e-volta gravar/ler
+
+### Investigado
+- **Comandos ociosos do firmware**: o fonte original declara `CMD_RESPOSTA_TEMPO_REAL=3`,
+  `CMD_RESPOSTA_GRAVAR=4` e `CMD_RESPOSTA_BUFFER=5` e **nunca os usa**. O nome do
+  primeiro sugere um **modo de tempo real** que destravaria conteúdo dinâmico
+  (relógio, contador). Documentado no `HANDOFF.md` como pergunta à LedBlock — nada
+  foi enviado ao painel, por segurança
+
+---
+
 ## [0.40.0] — 2026-08-30 · `versionCode 42`
 
 ### Adicionado

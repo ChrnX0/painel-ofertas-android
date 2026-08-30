@@ -151,6 +151,25 @@ class PanelRepository(private val store: PanelStore? = null) {
         }
     }
 
+    /**
+     * Registra/atualiza um painel lido por **etiqueta NFC**. Preenche só o que a
+     * etiqueta trouxer, preservando o que já se sabe (brilho, sensor, CRC…).
+     */
+    fun upsertFromTag(id: String, nome: String, ip: String, grupo: String) {
+        if (id.isBlank() && ip.isBlank()) return
+        persistUpdate { list ->
+            val existente = list.firstOrNull { (id.isNotBlank() && it.id == id) || (ip.isNotBlank() && it.ip == ip) }
+            val atualizado = (existente ?: Panel(id = id.ifBlank { ip }, name = nome.ifBlank { "Painel $id" }, ip = ip))
+                .copy(
+                    name = nome.ifBlank { existente?.name ?: "Painel $id" },
+                    ip = ip.ifBlank { existente?.ip ?: "" },
+                    group = grupo.ifBlank { existente?.group ?: "" },
+                )
+            if (existente == null) list + atualizado
+            else list.map { if (it === existente) atualizado else it }
+        }
+    }
+
     /** Grupos existentes (ex.: Açougue, Hortifruti), em ordem alfabética. */
     fun groups(): List<String> =
         _panels.value.map { it.group.trim() }.filter { it.isNotBlank() }.distinct().sorted()

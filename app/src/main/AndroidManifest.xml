@@ -17,6 +17,10 @@
     <!-- USB Host / OTG: configuração do módulo WiFi (ESP-AT) via HID Microchip -->
     <uses-feature android:name="android.hardware.usb.host" android:required="false" />
 
+    <!-- NFC: identificar o painel encostando o celular (modelos com etiqueta) -->
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
+
     <application
         android:name=".PainelApp"
         android:allowBackup="true"
@@ -43,6 +47,18 @@
             <meta-data
                 android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
                 android:resource="@xml/usb_device_filter" />
+
+            <!-- Etiqueta NFC de painel: URI ledblock:// ou registro de texto -->
+            <intent-filter>
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="ledblock" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
         </activity>
 
         <!-- Agendamento em segundo plano: alarme acorda o receiver, que sobe o serviço -->

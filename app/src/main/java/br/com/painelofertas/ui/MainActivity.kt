@@ -1,5 +1,6 @@
 package br.com.painelofertas.ui
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -54,10 +55,13 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -69,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import br.com.painelofertas.PainelApp
 import br.com.painelofertas.R
+import br.com.painelofertas.nfc.NfcReader
 import br.com.painelofertas.ui.components.StatusPill
 import br.com.painelofertas.ui.screens.AgendaScreen
 import br.com.painelofertas.ui.screens.ConfigScreen
@@ -79,10 +84,29 @@ import br.com.painelofertas.ui.theme.PainelOfertasTheme
 import br.com.painelofertas.ui.vm.AppViewModel
 import kotlinx.coroutines.launch
 
+/** Aviso da última leitura NFC — a UI mostra e limpa. */
+private var nfcAviso by mutableStateOf("")
+
 class MainActivity : ComponentActivity() {
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        tratarNfc(intent) // celular encostou num painel com etiqueta
+    }
+
+    /** Identifica o painel pela etiqueta NFC e o registra/atualiza na lista. */
+    private fun tratarNfc(intent: Intent?) {
+        val tag = NfcReader.fromIntent(intent) ?: return
+        val container = (applicationContext as PainelApp).container
+        container.panels.upsertFromTag(tag.id, tag.nome, tag.ip, tag.grupo)
+        nfcAviso = "Painel identificado por NFC: ${tag.nome.ifBlank { tag.id }}"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        tratarNfc(intent)
         setContent {
             val container = (applicationContext as PainelApp).container
             val themeMode by container.settings.themeMode.collectAsState()
@@ -125,6 +149,16 @@ fun PainelOfertasApp() {
     }
 
     val snackbar = remember { SnackbarHostState() }
+
+    // Painel identificado por NFC: avisa e leva direto para a lista de painéis.
+    LaunchedEffect(nfcAviso) {
+        if (nfcAviso.isNotBlank()) {
+            nav.selectedTab = 2
+            snackbar.showSnackbar(nfcAviso)
+            nfcAviso = ""
+        }
+    }
+
     CompositionLocalProvider(LocalSnackbar provides snackbar) {
         ModalNavigationDrawer(
             drawerState = drawerState,

@@ -161,6 +161,55 @@ precisaríamos de informação de vocês:
 
 ---
 
+## 📡 NFC — o app já está pronto
+
+O app **lê etiquetas NFC de painel**: encostar o celular identifica o equipamento
+(id, nome, IP, grupo) e o registra na lista, sem procurar nem digitar endereço.
+Isso **não depende do protocolo do painel** — só do NFC do celular — então já
+funciona hoje com uma etiqueta colada, e funcionará direto quando o painel trouxer
+NFC de fábrica.
+
+**Formato a gravar na etiqueta** (registro NDEF de texto, ou URI `ledblock://`):
+```
+lb=1;id=07;nome=Vitrine da Frente;ip=192.168.0.42;grupo=Acougue;modelo=LB-96;fw=1.2
+```
+- `lb=1` é **obrigatório** — é o que faz o app ignorar crachás e cartões de outros
+  sistemas que o celular encoste por acaso
+- `id` = o mesmo identificador que o painel reporta no `STATUS=`
+- os demais campos são opcionais; chaves desconhecidas são ignoradas (etiquetas de
+  versões futuras continuam legíveis por esta versão do app)
+
+Qualquer etiqueta NTAG213 (ou superior) serve, gravável por qualquer app de NFC.
+Ver `nfc/PanelTag.kt` e os testes em `PanelTagTest`.
+
+---
+
+## ⚡ Comandos do firmware que o app Windows nunca usou
+
+Ao investigar efeitos, encontramos no fonte original três códigos de comando USB
+**declarados e nunca utilizados** (`Ofertas.pas.~182~:427-431`):
+
+```pascal
+  CMD_PADRAO                  = 1;   // usado
+  CMD_TRANSFER                = 2;   // usado
+  CMD_RESPOSTA_TEMPO_REAL     = 3;   // NUNCA usado
+  CMD_RESPOSTA_GRAVAR         = 4;   // NUNCA usado
+  CMD_RESPOSTA_BUFFER         = 5;   // NUNCA usado
+```
+
+O nome **`RESPOSTA_TEMPO_REAL`** sugere que o firmware do painel talvez aceite um
+**modo de tempo real** — escrever direto no display sem gravar na memória. Se for
+isso, destrava **conteúdo dinâmico** (relógio, contador, texto que muda sozinho),
+que hoje é impossível: o app só grava um álbum estático que o painel rotaciona.
+
+**Pergunta para a LedBlock:** o que fazem os comandos 3, 4 e 5? Existe modo de
+escrita em tempo real / buffer direto? Qual o formato do pacote?
+
+Não implementamos nada com eles — mandar comando desconhecido a um painel em
+produção é risco sem necessidade. Com a especificação, implementamos.
+
+---
+
 ## 🔧 Atualização de firmware — o que falta para ser possível
 
 O app **lê** a identificação do módulo Wi-Fi (`AT+GMR`, MAC e IP) e guarda para
