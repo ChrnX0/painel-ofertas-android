@@ -227,6 +227,20 @@ fun EditarScreen() {
         ) {
             SegChoice(listOf("Horizontal", "Vertical"), if (vm.portrait) 1 else 0, Modifier.fillMaxWidth()) { vm.portrait = it == 1 }
 
+            // Modo de composição: Padrão (oferta pronta) ou Livre (texto solto).
+            if (cur != null && cur !is FrameDraft.Raw) {
+                val livre = cur is FrameDraft.Msg
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    SegChoice(listOf("Padrão", "Livre"), if (livre) 1 else 0, Modifier.fillMaxWidth()) { vm.setMode(it == 1) }
+                    Text(
+                        if (livre) "Livre: escreva o texto onde quiser — posição e fonte por linha."
+                        else "Padrão: campos prontos de oferta (cabeçalho, preço, medida…).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
             when (val d = cur) {
                 is FrameDraft.Msg -> MsgForm(d) { vm.replaceSel(it) }
                 is FrameDraft.Ofe -> OfeForm(d) { vm.replaceSel(it) }
@@ -662,7 +676,6 @@ private fun LineCard(linha: LineDraft, onChange: (LineDraft) -> Unit, onRemove: 
 private fun OfeForm(draft: FrameDraft.Ofe, onChange: (FrameDraft.Ofe) -> Unit) {
     val s = draft.spec
     fun set(ns: OfertaSpec) = onChange(draft.copy(spec = ns))
-    var maisCampos by remember { mutableStateOf(s.medida.isNotBlank() || s.auxiliar.isNotBlank() || s.rodape.isNotBlank()) }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
@@ -722,30 +735,17 @@ private fun OfeForm(draft: FrameDraft.Ofe, onChange: (FrameDraft.Ofe) -> Unit) {
                     FilterChip(s.centavos3Casas, { set(s.copy(centavos3Casas = !s.centavos3Casas)) }, { Text("3 casas") })
                     FilterChip(s.centavosDesligados, { set(s.copy(centavosDesligados = !s.centavosDesligados)) }, { Text("Sem centavos") })
                 }
+                // Medida é a unidade do preço → mora aqui (antes ficava em "Complementos").
+                OutlinedTextField(s.medida, { set(s.copy(medida = it)) }, label = { Text("Medida (ex.: O KILO)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             }
         }
 
-        // === MAIS CAMPOS (medida / auxiliar / rodapé) — colapsável ===
+        // === RODAPÉ (textos auxiliares) ===
         Card {
-            Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(
-                    Modifier.fillMaxWidth().clickable { maisCampos = !maisCampos },
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    SectionLabel("Complementos")
-                    val rot by animateFloatAsState(if (maisCampos) 180f else 0f, label = "expand")
-                    Icon(Icons.Filled.KeyboardArrowDown, if (maisCampos) "Recolher" else "Expandir", Modifier.graphicsLayer { rotationZ = rot })
-                }
-                androidx.compose.animation.AnimatedVisibility(maisCampos) {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            OutlinedTextField(s.medida, { set(s.copy(medida = it)) }, label = { Text("Medida") }, singleLine = true, modifier = Modifier.weight(1f))
-                            OutlinedTextField(s.auxiliar, { set(s.copy(auxiliar = it)) }, label = { Text("Auxiliar") }, singleLine = true, modifier = Modifier.weight(1f))
-                        }
-                        OutlinedTextField(s.rodape, { set(s.copy(rodape = it)) }, label = { Text("Rodapé") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    }
-                }
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                SectionLabel("Rodapé")
+                OutlinedTextField(s.auxiliar, { set(s.copy(auxiliar = it)) }, label = { Text("Auxiliar") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(s.rodape, { set(s.copy(rodape = it)) }, label = { Text("Rodapé (ex.: OFERTA VÁLIDA HOJE)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             }
         }
     }

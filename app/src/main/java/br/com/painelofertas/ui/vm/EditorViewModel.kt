@@ -33,6 +33,20 @@ class EditorViewModel : ViewModel() {
 
     fun replaceSel(d: FrameDraft) { if (sel in frames.indices) frames[sel] = d }
 
+    /**
+     * Alterna o modo da tela atual: **Padrão** (Oferta estruturada) ou **Livre**
+     * (Mensagem — texto solto com posição/fonte). Converte o tipo do quadro,
+     * preservando o nome (o conteúdo é reiniciado, pois os modelos são diferentes).
+     */
+    fun setMode(livre: Boolean) {
+        val d = current ?: return
+        if (livre && d !is FrameDraft.Msg) {
+            frames[sel] = FrameDraft.Msg(name = d.name, halfScreen = d.halfScreen, durationIndex = d.durationIndex)
+        } else if (!livre && d !is FrameDraft.Ofe) {
+            frames[sel] = FrameDraft.Ofe(name = d.name, halfScreen = d.halfScreen)
+        }
+    }
+
     fun addMsg(name: String = "") { frames.add(FrameDraft.Msg(name = name)); selected = frames.lastIndex }
     fun addOfe(name: String = "") { frames.add(FrameDraft.Ofe(name = name)); selected = frames.lastIndex }
 

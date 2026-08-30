@@ -8,6 +8,20 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.32.0] — 2026-08-29 · `versionCode 34`
+
+### Adicionado
+- **Modo Padrão / Livre** no editor: um seletor no topo do conteúdo troca a tela
+  entre **Padrão** (oferta estruturada) e **Livre** (texto solto com posição/fonte
+  por linha) — reaproveitando os tipos Oferta/Mensagem num só lugar
+
+### Alterado
+- **"Complementos" fundido**: a **Medida** foi para dentro do cartão **Preço** (é a
+  unidade do preço), e **Auxiliar + Rodapé** viraram um cartão **Rodapé** sempre
+  visível. Some o cartão colapsável confuso
+
+---
+
 ## [0.31.0] — 2026-08-29 · `versionCode 33`
 
 ### Corrigido
