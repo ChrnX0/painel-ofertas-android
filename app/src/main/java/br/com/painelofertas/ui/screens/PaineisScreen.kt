@@ -26,6 +26,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Memory
@@ -100,6 +101,8 @@ fun PaineisScreen() {
     // velho e quebrava a busca). Recalcula ao (re)entrar na aba.
     val localIp = remember { container.currentLocalIp() }
     val scanning by container.discovery.scanning.collectAsState()
+    /** Painel aguardando confirmação de "apagar tudo" — ação destrutiva, sempre pergunta. */
+    var confirmarLimpeza by remember { mutableStateOf<Panel?>(null) }
 
     // Auto-conectar: ao abrir a aba, re-anuncia na rede (painéis na mesma rede aparecem sozinhos).
     LaunchedEffect(Unit) { container.autoConnect() }
@@ -159,6 +162,7 @@ fun PaineisScreen() {
                         onIdentificar = { cmd("INICIAR=228") },
                         onLigar = { cmd("INICIAR=${p.brightness + if (p.sensorAuto) 128 else 0}") },
                         onDesligar = { cmd("ONOFF=0") },
+                        onLimpar = { confirmarLimpeza = p },
                         onRename = { container.panels.rename(p.id, it) },
                         onDelete = { container.panels.remove(p.id) },
                         onSaveConfig = { note, grupo, ssid, senha, dhcp, sip, gw, mask ->
@@ -184,6 +188,33 @@ fun PaineisScreen() {
         Appear(delayMillis = 40) { WifiConfigCard(usbConnected, localIp, container, scope) }
         Appear(delayMillis = 80) { PanelPasswordCard(usbConnected, container, scope) }
         Appear(delayMillis = 120) { DiagnosticoCard() }
+    }
+
+    // Apagar a memória é irreversível: confirma sempre, nomeando o painel.
+    confirmarLimpeza?.let { alvo ->
+        AlertDialog(
+            onDismissRequest = { confirmarLimpeza = null },
+            icon = { Icon(Icons.Filled.DeleteSweep, null, tint = Accent.Rose) },
+            title = { Text("Apagar tudo de \"${alvo.name}\"?") },
+            text = {
+                Text(
+                    "O painel fica vazio na hora. As telas gravadas nele se perdem — " +
+                        "se quiser guardá-las, use \"Trazer para editar\" no editor antes.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmarLimpeza = null
+                    scope.launch {
+                        val ok = container.clearPanel(UdpLink(alvo.ip, container.udp), alvo.brightness)
+                        snackbar.showSnackbar(
+                            if (ok) "Painel \"${alvo.name}\" apagado." else "Não consegui apagar. Verifique o painel.",
+                        )
+                    }
+                }) { Text("Apagar", color = Accent.Rose) }
+            },
+            dismissButton = { TextButton(onClick = { confirmarLimpeza = null }) { Text("Cancelar") } },
+        )
     }
 }
 
@@ -413,6 +444,7 @@ private fun PanelCard(
     onIdentificar: () -> Unit,
     onLigar: () -> Unit,
     onDesligar: () -> Unit,
+    onLimpar: () -> Unit,
     onRename: (String) -> Unit,
     onDelete: () -> Unit,
     onSaveConfig: (String, String, String, String, Boolean, String, String, String) -> Unit,
@@ -465,6 +497,16 @@ private fun PanelCard(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 AccentOutlinedButton(onClick = onIdentificar, accent = Accent.Amber) { Text("Identificar") }
                 AccentOutlinedButton(onClick = { onRename(nome) }, accent = Accent.Blue) { Text("Renomear") }
+            }
+            // Apagar a memória mora aqui, e não no editor: com vários painéis,
+            // "Limpar painel" solto no editor não dizia qual seria apagado.
+            AccentOutlinedButton(
+                onClick = { onLimpar() },
+                accent = Accent.Rose,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Filled.DeleteSweep, null, Modifier.size(18.dp)); Spacer(Modifier.size(6.dp))
+                Text("Apagar tudo deste painel")
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

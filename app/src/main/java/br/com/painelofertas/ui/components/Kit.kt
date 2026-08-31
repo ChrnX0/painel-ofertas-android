@@ -54,14 +54,23 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.painelofertas.net.LinkPhase
@@ -127,6 +136,53 @@ fun accentCardColors(accent: Color, forca: Float): CardColors {
  * que faz a cor parecer intencional em vez de um banho apagado.
  */
 fun accentBorder(accent: Color) = BorderStroke(1.dp, accent.copy(alpha = 0.35f))
+
+/**
+ * Escala e opacidade que acompanham o fôlego do app. Aplique em cartões e blocos
+ * grandes: cada um infla ~1,5% e clareia junto com todos os outros. Sozinho é
+ * quase invisível; o efeito nasce de **tudo se mexer em sincronia**.
+ *
+ * A leitura do fôlego fica dentro da lambda do `graphicsLayer`, então só a fase de
+ * desenho reexecuta — o layout nunca é remedido, e nada recompõe.
+ */
+@Composable
+fun Modifier.breathe(intensidade: Float = 1f): Modifier {
+    val breath = LocalBreath.current
+    return graphicsLayer {
+        val ar = breath.value
+        val s = 1f + (ar - 0.5f) * 0.030f * intensidade
+        scaleX = s
+        scaleY = s
+    }
+}
+
+/**
+ * **Contorno que respira** — a versão do fôlego para cartões grandes.
+ *
+ * Escalar um cartão faria o texto dentro dele ser rerrasterizado a cada passo, e
+ * o resultado é um tremeluzir feio nas letras. O contorno resolve isso: a
+ * geometria fica parada, só a **luz** da borda vai e vem. Custa um traço de 1 px
+ * por quadro, e como todos os cartões usam o mesmo fôlego, a tela inteira acende
+ * e apaga junta.
+ */
+@Composable
+fun Modifier.breathingBorder(
+    accent: Color,
+    shape: Shape,
+    largura: Dp = 1.2.dp,
+    min: Float = 0.16f,
+    max: Float = 0.62f,
+): Modifier {
+    val breath = LocalBreath.current
+    return drawWithContent {
+        drawContent()
+        drawOutline(
+            outline = shape.createOutline(size, layoutDirection, this),
+            color = accent.copy(alpha = breath.value.entre(min, max)),
+            style = Stroke(largura.toPx()),
+        )
+    }
+}
 
 /** Botão preenchido em cor **pastel** (texto escuro para contraste). */
 @Composable
@@ -265,7 +321,7 @@ fun OptionTile(
         Motion.gentle(), label = "tileEdge",
     )
     // Escolhido cresce um tiquinho — o par inteiro "respira" quando você troca.
-    val escala by animateFloatAsState(if (selected) 1f else 0.975f, Motion.bouncy(), label = "tileScale")
+    val escala by animateFloatAsState(if (selected) 1.035f else 0.94f, Motion.bouncy(), label = "tileScale")
     val press = remember { MutableInteractionSource() }
 
     Column(
@@ -410,10 +466,34 @@ fun MonoText(
 fun LedBezel(
     modifier: Modifier = Modifier,
     boardHeight: Dp = 150.dp,
+    /** Cor do LED — o halo que a placa emite. */
+    glow: Color = Color(0xFFFFB300),
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val breath = LocalBreath.current
+    val sprite = rememberGlowSprite()
+
     Box(
         modifier
+            // Halo: a placa "vaza" luz para fora da moldura e o brilho pulsa com o
+            // fôlego do app. É um sprite esticado — um blit, não um gradiente por
+            // quadro — e a leitura do fôlego mora dentro do drawBehind, então só a
+            // fase de desenho reexecuta.
+            .drawBehind {
+                val ar = breath.value
+                val extra = size.minDimension * ar.entre(0.55f, 0.95f)
+                val w = (size.width + extra).toInt()
+                val h = (size.height + extra).toInt()
+                drawImage(
+                    image = sprite,
+                    srcOffset = IntOffset.Zero,
+                    srcSize = IntSize(sprite.width, sprite.height),
+                    dstOffset = IntOffset(((size.width - w) / 2f).toInt(), ((size.height - h) / 2f).toInt()),
+                    dstSize = IntSize(w, h),
+                    colorFilter = ColorFilter.tint(glow.copy(alpha = ar.entre(0.10f, 0.26f))),
+                    filterQuality = FilterQuality.Low,
+                )
+            }
             .clip(SquircleShape(24.dp))
             .background(
                 Brush.linearGradient(

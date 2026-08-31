@@ -77,6 +77,7 @@ import br.com.painelofertas.ui.components.Accent
 import br.com.painelofertas.ui.components.AuroraBackground
 import br.com.painelofertas.ui.components.Motion
 import br.com.painelofertas.ui.components.Appear
+import br.com.painelofertas.ui.components.BreathProvider
 import br.com.painelofertas.ui.components.ButtonShape
 import br.com.painelofertas.ui.components.SoftDivider
 import br.com.painelofertas.ui.components.StatusPill
@@ -120,7 +121,8 @@ class MainActivity : ComponentActivity() {
                 else -> isSystemInDarkTheme()
             }
             PainelOfertasTheme(darkTheme = dark) {
-                PainelOfertasApp()
+                // Um pulmão só para o app inteiro — ver BreathProvider.
+                BreathProvider { PainelOfertasApp() }
             }
         }
     }

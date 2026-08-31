@@ -39,15 +39,20 @@ object Motion {
     fun <T> gentle(): FiniteAnimationSpec<T> =
         spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
 
+    /**
+     * Seleção e entrada. Amortecimento baixo de propósito: a 0,55 a oscilação
+     * assentava antes de o olho registrar que houve uma. A 0,34 o elemento passa
+     * visivelmente do ponto e volta — é isso que se lê como "elástico".
+     */
     fun <T> bouncy(): FiniteAnimationSpec<T> =
-        spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMediumLow)
+        spring(dampingRatio = 0.34f, stiffness = Spring.StiffnessMediumLow)
 
     fun <T> snappy(): FiniteAnimationSpec<T> =
-        spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMedium)
+        spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMedium)
 
     /** Bem elástica — só para o que deve chamar atenção (o botão principal). */
     fun <T> springy(): FiniteAnimationSpec<T> =
-        spring(dampingRatio = 0.42f, stiffness = Spring.StiffnessLow)
+        spring(dampingRatio = 0.24f, stiffness = Spring.StiffnessLow)
 }
 
 /**
@@ -59,7 +64,7 @@ object Motion {
  */
 fun Modifier.pressBounce(
     interactionSource: MutableInteractionSource,
-    scaleDown: Float = 0.965f,
+    scaleDown: Float = 0.92f,
 ): Modifier = composed {
     val pressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -90,7 +95,7 @@ fun Appear(
         visible = shown,
         modifier = modifier,
         enter = fadeIn(tween(300)) +
-            scaleIn(Motion.bouncy(), initialScale = 0.94f) +
-            slideInVertically(Motion.bouncy()) { full -> full / 7 },
+            scaleIn(Motion.bouncy(), initialScale = 0.82f) +
+            slideInVertically(Motion.bouncy()) { full -> full / 3 },
     ) { content() }
 }

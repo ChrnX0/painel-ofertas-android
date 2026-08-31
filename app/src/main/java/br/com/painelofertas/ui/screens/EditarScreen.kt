@@ -137,6 +137,10 @@ import br.com.painelofertas.ui.components.OnAccent
 import br.com.painelofertas.ui.components.OnboardingCard
 import br.com.painelofertas.ui.components.accentBorder
 import br.com.painelofertas.ui.components.accentCardColors
+import br.com.painelofertas.ui.components.LocalBreath
+import br.com.painelofertas.ui.components.entre
+import br.com.painelofertas.ui.components.breathe
+import br.com.painelofertas.ui.components.breathingBorder
 import br.com.painelofertas.ui.components.Motion
 import br.com.painelofertas.ui.components.pressBounce
 import br.com.painelofertas.ui.components.MonoText
@@ -172,7 +176,6 @@ fun EditarScreen() {
     val panels by container.panels.panels.collectAsState()
     val usbConnected by container.usb.connected.collectAsState()
     var confirmOverwrite by remember { mutableStateOf(false) }
-    var confirmClear by remember { mutableStateOf(false) }
     var confirmDeleteAlbum by remember { mutableStateOf<String?>(null) }
     var showNameDialog by remember { mutableStateOf(false) }
     var showBatchDialog by remember { mutableStateOf(false) }
@@ -318,19 +321,6 @@ fun EditarScreen() {
         }
     }
 
-    fun limpar() {
-        val link = panelLink() ?: run { msg = "Nenhum painel conectado."; return }
-        panelBusy = true; msg = "Limpando o painel…"
-        val usb = viaUsb()
-        container.connection.transferStarted(usb)
-        editScope.launch {
-            val ok = runCatching { container.clearPanel(link, targetPanel?.brightness ?: 100) }.getOrDefault(false)
-            container.connection.transferEnded(usb, ok)
-            msg = if (ok) "✅ Painel limpo." else "❌ Falha ao limpar o painel."
-            panelBusy = false
-        }
-    }
-
     // Rascunho automático: restaura o trabalho em andamento na 1ª composição e
     // salva a cada mudança — o lojista não perde o que digitou se o app for morto.
     LaunchedEffect(Unit) {
@@ -418,7 +408,12 @@ fun EditarScreen() {
             ScreensBar(vm) { showNameDialog = true }
             if (cur != null) {
                 val frameAtual = cur.build(fonts, vm.portrait)
-                PreviewPager(frameAtual, cur.halfScreen, vm.portrait, vm.liveAlbum, vm.sel, ledIdx)
+                PreviewPager(
+                    frameAtual, cur.halfScreen, vm.portrait, vm.liveAlbum, vm.sel, ledIdx,
+                    podeSincronizar = temPainel,
+                    sincronizando = panelBusy,
+                    onSincronizar = { sincronizar() },
+                )
 
                 // Aviso de conteúdo cortado: o painel é físico, o que passa some.
                 val over = remember(frameAtual, cur.halfScreen, vm.portrait) {
@@ -482,18 +477,9 @@ fun EditarScreen() {
 
             Appear(delayMillis = 140) { SequenciaCard(vm, editScope, snackbar) }
 
-            Appear(delayMillis = 190) {
-                PainelCard(
-                    temPainel = temPainel,
-                    busy = panelBusy,
-                    onSincronizar = { sincronizar() },
-                    onLimpar = { confirmClear = true },
-                )
-            }
-
             // ===== ÁLBUM =====
             Appear(delayMillis = 240) {
-            Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Blue), border = accentBorder(Accent.Blue)) {
+            Card(Modifier.fillMaxWidth().breathingBorder(Accent.Blue, MaterialTheme.shapes.medium), colors = accentCardColors(Accent.Blue)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                         SectionLabel("Álbum")
@@ -633,17 +619,6 @@ fun EditarScreen() {
         )
     }
 
-    if (confirmClear) {
-        AlertDialog(
-            onDismissRequest = { confirmClear = false },
-            icon = { Icon(Icons.Filled.DeleteSweep, null) },
-            title = { Text("Limpar todo o painel?") },
-            text = { Text("Isso apaga todas as telas gravadas no painel e deixa o display em branco. Não afeta seus álbuns salvos no celular.") },
-            confirmButton = { TextButton(onClick = { confirmClear = false; limpar() }) { Text("Limpar") } },
-            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Cancelar") } },
-        )
-    }
-
     confirmDeleteAlbum?.let { alb ->
         AlertDialog(
             onDismissRequest = { confirmDeleteAlbum = null },
@@ -666,7 +641,7 @@ private fun SequenciaCard(
     snackbar: androidx.compose.material3.SnackbarHostState,
 ) {
     val cur = vm.current
-    Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Teal), border = accentBorder(Accent.Teal)) {
+    Card(Modifier.fillMaxWidth().breathingBorder(Accent.Teal, MaterialTheme.shapes.medium), colors = accentCardColors(Accent.Teal)) {
         Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SectionLabel("Sequência · ${vm.frames.size} ${if (vm.frames.size == 1) "tela" else "telas"}")
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -702,37 +677,6 @@ private fun SequenciaCard(
     }
 }
 
-/** Ações que falam com o painel físico: sincronizar a sequência e limpar tudo. */
-@Composable
-private fun PainelCard(
-    temPainel: Boolean,
-    busy: Boolean,
-    onSincronizar: () -> Unit,
-    onLimpar: () -> Unit,
-) {
-    Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Green), border = accentBorder(Accent.Green)) {
-        Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                CardHeader(Icons.Filled.Sync, Accent.Green, "Painel")
-                if (busy) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-            }
-            Text(
-                if (temPainel) "Traga o que já está gravado no painel para editar, ou apague tudo."
-                else "Conecte-se a um painel (aba Painéis ou USB) para usar estas ações.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                AccentOutlinedButton(onClick = onSincronizar, enabled = temPainel && !busy, accent = Accent.Green, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Filled.Sync, null, Modifier.size(18.dp)); Spacer(Modifier.size(6.dp)); Text("Sincronizar com o painel")
-                }
-                AccentOutlinedButton(onClick = onLimpar, enabled = temPainel && !busy, accent = Accent.Rose, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Filled.DeleteSweep, null, Modifier.size(18.dp)); Spacer(Modifier.size(6.dp)); Text("Limpar painel")
-                }
-            }
-        }
-    }
-}
 
 // ---------- helpers ----------
 
@@ -777,9 +721,8 @@ private fun SetupCard(vm: EditorViewModel, cur: FrameDraft?) {
     val ligada = vm.currentEnabled ?: true
 
     Card(
-        Modifier.fillMaxWidth(),
+        Modifier.fillMaxWidth().breathingBorder(Accent.Sky, MaterialTheme.shapes.medium),
         colors = accentCardColors(Accent.Sky, 0.14f),
-        border = accentBorder(Accent.Sky),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
 
@@ -925,15 +868,9 @@ private fun PublishBar(
                 // quase imperceptível, que diz "estou vivo, é aqui". Some no instante
                 // em que o envio começa — respirar durante o trabalho seria ruído.
                 val pronto = destino != null && state == EditorViewModel.PubState.IDLE
-                val respiro = rememberInfiniteTransition(label = "publicar")
-                val pulso by respiro.animateFloat(
-                    initialValue = 1f,
-                    targetValue = 1.035f,
-                    animationSpec = infiniteRepeatable(tween(1700, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-                    label = "pulso",
-                )
+                val breath = LocalBreath.current
                 val escalaOk by animateFloatAsState(
-                    if (state == EditorViewModel.PubState.DONE) 1.06f else 1f,
+                    if (state == EditorViewModel.PubState.DONE) 1.10f else 1f,
                     Motion.springy(), label = "publicarOk",
                 )
                 val press = remember { MutableInteractionSource() }
@@ -943,11 +880,15 @@ private fun PublishBar(
                     shape = ButtonShape,
                     interactionSource = press,
                     modifier = Modifier
+                        // Respira no mesmo compasso do resto do app; o pulso some
+                        // no instante em que o envio começa — respirar durante o
+                        // trabalho seria ruído.
                         .graphicsLayer {
-                            val s = (if (pronto) pulso else 1f) * escalaOk
+                            val ar = breath.value
+                            val s = (if (pronto) ar.entre(0.975f, 1.055f) else 1f) * escalaOk
                             scaleX = s; scaleY = s
                         }
-                        .pressBounce(press, scaleDown = 0.94f)
+                        .pressBounce(press, scaleDown = 0.90f)
                         .height(50.dp)
                         .semantics { contentDescription = "Publicar no painel" },
                 ) {
@@ -998,14 +939,14 @@ private fun ScreensBar(vm: EditorViewModel, onAdd: () -> Unit) {
         vm.frames.forEachIndexed { i, d ->
             val selected = i == vm.sel
             val press = remember { MutableInteractionSource() }
-            val largura by animateDpAsState(if (selected) 62.dp else 48.dp, Motion.bouncy(), label = "tabW")
+            val largura by animateDpAsState(if (selected) 74.dp else 46.dp, Motion.bouncy(), label = "tabW")
             val cor by animateColorAsState(
                 if (selected) cs.primary else cs.surfaceContainerHigh,
                 Motion.gentle(), label = "tabColor",
             )
             Box(
                 Modifier.width(largura).height(48.dp)
-                    .pressBounce(press)
+                    .pressBounce(press, scaleDown = 0.88f)
                     .clip(forma)
                     .background(cor)
                     .clickable(interactionSource = press, indication = null) { vm.selected = i }
@@ -1032,9 +973,27 @@ private fun ScreensBar(vm: EditorViewModel, onAdd: () -> Unit) {
     }
 }
 
-/** Prévia deslizável: página 0 = a tela sendo editada; página 1 = o que está no painel. */
+/**
+ * Prévia deslizável: página 0 = a tela sendo editada; página 1 = o que está no
+ * painel.
+ *
+ * A ação "trazer para editar" mora **aqui**, na página do painel, e não num cartão
+ * separado: o usuário está justamente olhando o conteúdo gravado quando decide
+ * mexer nele. Cartão à parte obrigava a lembrar do que tinha visto e procurar o
+ * botão lá embaixo.
+ */
 @Composable
-private fun PreviewPager(editing: PanelFrame, half: Boolean, portrait: Boolean, live: Album?, liveIndex: Int, ledIdx: Int) {
+private fun PreviewPager(
+    editing: PanelFrame,
+    half: Boolean,
+    portrait: Boolean,
+    live: Album?,
+    liveIndex: Int,
+    ledIdx: Int,
+    podeSincronizar: Boolean = false,
+    sincronizando: Boolean = false,
+    onSincronizar: () -> Unit = {},
+) {
     val pager = rememberPagerState(pageCount = { 2 })
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         HorizontalPager(state = pager, pageSpacing = 12.dp, modifier = Modifier.fillMaxWidth()) { page ->
@@ -1043,8 +1002,24 @@ private fun PreviewPager(editing: PanelFrame, half: Boolean, portrait: Boolean, 
             } else {
                 val liveFrames = live?.frames.orEmpty()
                 if (liveFrames.isNotEmpty()) {
-                    val f = liveFrames[liveIndex.coerceIn(0, liveFrames.lastIndex)]
-                    PreviewCard(f, f.halfScreen, portrait, badge = "NO PAINEL", boardHeight = 126.dp)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val f = liveFrames[liveIndex.coerceIn(0, liveFrames.lastIndex)]
+                        PreviewCard(f, f.halfScreen, portrait, badge = "NO PAINEL", boardHeight = 126.dp)
+                        AccentOutlinedButton(
+                            onClick = onSincronizar,
+                            enabled = podeSincronizar && !sincronizando,
+                            accent = Accent.Green,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            if (sincronizando) {
+                                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Filled.Sync, null, Modifier.size(18.dp))
+                            }
+                            Spacer(Modifier.size(6.dp))
+                            Text("Trazer estas ${liveFrames.size} telas para editar")
+                        }
+                    }
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         LedBezel(Modifier.fillMaxWidth(), boardHeight = 126.dp) {

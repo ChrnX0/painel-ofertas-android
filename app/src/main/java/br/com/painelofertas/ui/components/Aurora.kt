@@ -66,12 +66,17 @@ fun AuroraBackground(
     }
 
     // No claro o pastel some sobre branco: precisa de mais opacidade que no escuro.
-    val alpha = if (light) 0.34f else 0.24f
+    val alphaBase = if (light) 0.40f else 0.30f
+    val breath = LocalBreath.current
 
     Canvas(modifier) {
         val w = size.width
         val h = size.height
-        val lado = (maxOf(w, h) * 0.72f).roundToInt()
+        // Respira junto com o resto do app: incha ~20% e clareia. O fôlego é lido
+        // AQUI DENTRO, na fase de desenho — não recompõe nada acima.
+        val ar = breath.value
+        val lado = (maxOf(w, h) * ar.entre(0.66f, 0.82f)).roundToInt()
+        val alpha = (alphaBase * ar.entre(0.70f, 1.20f)).coerceIn(0f, 1f)
 
         PERIODOS.forEachIndexed { i, periodo ->
             val f = TAU * (segundos % periodo) / periodo
@@ -91,6 +96,14 @@ fun AuroraBackground(
         }
     }
 }
+
+/**
+ * Sprite de brilho reaproveitável — o mesmo disco difuso da aurora, exposto para
+ * quem quiser um halo barato (o painel de LED usa). Um `drawImage` esticado sai
+ * muito mais barato que um gradiente radial por quadro.
+ */
+@Composable
+fun rememberGlowSprite(): ImageBitmap = remember { criarMancha() }
 
 private const val TAU = (2 * Math.PI).toFloat()
 

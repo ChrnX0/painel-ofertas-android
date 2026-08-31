@@ -8,6 +8,44 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.44.0] — 2026-08-30 · `versionCode 46`
+
+### Adicionado — o app respira
+- **`BreathProvider`: um pulmão só.** Um único oscilador (0→1→0, ciclo de 4,2 s)
+  compartilhado por tudo que é vivo. É o ponto da coisa: se cada elemento tivesse
+  a própria animação de respiro, pulsariam fora de fase e o resultado seria
+  **tremor**, não vida. Com um fôlego só, aurora, halo do painel, contorno dos
+  cartões e botão Publicar incham e murcham **juntos** — o app lê como organismo
+- O fôlego é lido **dentro** de lambdas de `graphicsLayer`/`drawBehind`, então só
+  a fase de desenho reexecuta: nada recompõe, nada é remedido. Ler fora
+  recomporia a árvore inteira 15×/s
+- **Halo na placa de LED**: o painel vaza luz para fora da moldura, e o brilho
+  pulsa. Reaproveita o sprite da aurora — um *blit*, não um gradiente por quadro
+- **`Modifier.breathingBorder`**: cartões grandes acendem e apagam pelo
+  **contorno**. Escalar o cartão rerrasterizaria o texto a cada passo e
+  produziria um tremeluzir feio nas letras; o contorno deixa a geometria parada e
+  move só a luz
+- Aurora agora também respira: incha ~20% e clareia no mesmo compasso
+
+### Alterado — molas bem mais expressivas
+- `bouncy` de 0,55 → **0,34** de amortecimento; `springy` 0,42 → **0,24**. A 0,55
+  a oscilação assentava antes de o olho registrar que houve uma
+- Pressão afunda 8% (era 3,5%); pastilha de tela vai a 88%
+- Pastilha selecionada: 46 → **74 dp** de largura (era 48→62)
+- Botão de escolha selecionado cresce a 1,035 e o irmão encolhe a 0,94
+- Entrada em cascata: escala inicial 0,94 → **0,82**, deslize 1/7 → **1/3**
+
+### Alterado — o cartão "Painel" saiu do editor
+As duas ações eram reais, mas nenhuma pertencia ali:
+- **"Trazer para editar"** foi para a **página do painel na prévia deslizável** —
+  o usuário está justamente olhando o conteúdo gravado quando decide mexer nele.
+  O cartão à parte obrigava a lembrar do que tinha visto e procurar o botão lá
+  embaixo. O botão ainda diz quantas telas virão
+- **"Limpar painel"** foi para **Painéis**, junto de Ligar/Desligar/Identificar.
+  Com vários painéis, "Limpar painel" solto no editor não dizia **qual** seria
+  apagado; agora a confirmação nomeia o painel e lembra de salvar antes
+- Removidos `PainelCard`, o diálogo de limpeza e `limpar()` do editor
+
 ## [0.43.0] — 2026-08-30 · `versionCode 45`
 
 Um **sistema** de design orgânico, não efeitos avulsos: forma, movimento e cor
