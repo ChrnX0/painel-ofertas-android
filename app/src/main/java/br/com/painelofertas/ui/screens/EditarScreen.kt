@@ -17,8 +17,10 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,9 +42,12 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.LocalOffer
+import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistAdd
@@ -115,11 +120,15 @@ import br.com.painelofertas.ui.components.AccentOutlinedButton
 import br.com.painelofertas.ui.components.Appear
 import br.com.painelofertas.ui.components.ButtonShape
 import br.com.painelofertas.ui.components.CardHeader
+import br.com.painelofertas.ui.components.DestinoSheet
 import br.com.painelofertas.ui.components.LedBezel
 import br.com.painelofertas.ui.components.OnAccent
 import br.com.painelofertas.ui.components.OnboardingCard
+import br.com.painelofertas.ui.components.accentBorder
 import br.com.painelofertas.ui.components.accentCardColors
 import br.com.painelofertas.ui.components.MonoText
+import br.com.painelofertas.ui.components.OptionTile
+import br.com.painelofertas.ui.components.PanelShape
 import br.com.painelofertas.ui.components.PanelPreview
 import br.com.painelofertas.ui.components.SectionLabel
 import br.com.painelofertas.ui.components.SegChoice
@@ -131,7 +140,6 @@ import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import br.com.painelofertas.ui.vm.AppViewModel
 import br.com.painelofertas.ui.vm.EditorViewModel
 
 @Composable
@@ -143,7 +151,6 @@ fun EditarScreen() {
     val haptic = LocalHapticFeedback.current
     val snackbar = LocalSnackbar.current
     val editScope = rememberCoroutineScope()
-    val nav: AppViewModel = viewModel()
     var msg by remember { mutableStateOf("") }
     val albuns by container.albums.names.collectAsState()
     val historico by container.albums.history.collectAsState()
@@ -176,17 +183,37 @@ fun EditarScreen() {
         msg = "Álbum \"${vm.nome}\" salvo (${vm.frames.size} telas)."
     }
 
-    // Alvo das ações de painel (sincronizar / limpar): prefere um painel online,
-    // mas aceita QUALQUER painel conhecido (o status "esfria" pra instável em ~15s,
-    // então exigir ONLINE travava o botão); se não houver, usa o USB conectado.
-    val targetPanel = panels.firstOrNull { it.status == PanelStatus.ONLINE } ?: panels.firstOrNull()
-    fun viaUsb() = targetPanel == null && usbConnected
+    // ===== DESTINO DA PUBLICAÇÃO =====
+    // Escolhido na própria barra Publicar (absorve o que era a aba "Enviar"):
+    // um painel, vários, um grupo inteiro ou o USB.
+    var destinos by remember { mutableStateOf(setOf<String>()) }
+    var usarUsb by remember { mutableStateOf(false) }
+    var mostrarDestino by remember { mutableStateOf(false) }
+    var usarSenha by remember { mutableStateOf(container.settings.useTxPassword) }
+    var senhaTx by remember { mutableStateOf(container.settings.txPassword) }
+
+    // Sem escolha explícita, usa o painel online (ou qualquer conhecido) — o caso
+    // comum de uma loja com um painel só continua sendo zero-toque.
+    val painelPadrao = panels.firstOrNull { it.status == PanelStatus.ONLINE } ?: panels.firstOrNull()
+    val ipsDestino: List<String> = when {
+        usarUsb -> emptyList()
+        destinos.isNotEmpty() -> destinos.toList()
+        painelPadrao != null -> listOf(painelPadrao.ip)
+        else -> emptyList()
+    }
+    // Painel de referência (nome, memória livre, CRC). Só cai no padrão quando não
+    // há escolha explícita — senão um IP digitado à mão herdaria o nome de outro.
+    val targetPanel =
+        if (ipsDestino.isEmpty()) painelPadrao
+        else panels.firstOrNull { it.ip == ipsDestino.first() }
+    fun viaUsb() = usarUsb && usbConnected
     fun panelLink(): PanelLink? = when {
+        viaUsb() -> container.usb.link.value
         targetPanel != null -> UdpLink(targetPanel.ip, container.udp)
         usbConnected -> container.usb.link.value
         else -> null
     }
-    val temPainel = targetPanel != null || usbConnected
+    val temPainel = ipsDestino.isNotEmpty() || (usbConnected && usarUsb) || targetPanel != null || usbConnected
 
     // "Cabe no painel?" — avisa ANTES de publicar (null = desconhecido).
     val cabeNoPainel: Boolean? = remember(vm.frames.size, vm.frames.toList(), targetPanel?.freeMemory) {
@@ -220,37 +247,56 @@ fun EditarScreen() {
      * escolher álbum → escolher painel → enviar".
      */
     fun publicar() {
-        val link = panelLink() ?: run { vm.pubError("Nenhum painel conectado."); return }
+        val usb = viaUsb()
+        // Alvos: o USB, ou a lista de IPs escolhida (um, vários ou um grupo).
+        val alvos: List<PanelLink?> =
+            if (usb) listOf(container.usb.link.value)
+            else ipsDestino.map { container.udpLinkByIp(it) }
+        if (alvos.isEmpty() || alvos.all { it == null }) { vm.pubError("Nenhum painel conectado."); return }
+
         val album = vm.toAlbum(fonts)
         container.albums.save(album)          // publica sempre a partir do que está na tela
-        val usb = viaUsb()
         vm.pubStart()
         container.connection.transferStarted(usb)
         editScope.launch {
             val r = album.compile()
-            val codigo =
-                if (container.settings.useTxPassword)
-                    Encriptor.code(container.settings.txPassword, System.currentTimeMillis().toString())
-                else IntArray(10)
-            val ok = runCatching {
-                container.transfer(link).upload(r.bytes, codigo, album.brilho) { p ->
-                    when (p) {
-                        is TransferProgress.Uploading -> vm.pubProgress(p.sent, p.total)
-                        else -> {}
+            var okTotal = 0
+            val falhas = mutableListOf<String>()
+
+            alvos.forEachIndexed { idx, link ->
+                if (link == null) return@forEachIndexed
+                val ip = if (usb) "USB" else ipsDestino[idx]
+                val codigo =
+                    if (usarSenha) Encriptor.code(senhaTx, System.currentTimeMillis().toString())
+                    else IntArray(10)
+                val rotulo =
+                    if (alvos.size == 1) ""
+                    else "Painel ${idx + 1} de ${alvos.size} (${panels.firstOrNull { it.ip == ip }?.name ?: ip})"
+                val ok = runCatching {
+                    container.transfer(link).upload(r.bytes, codigo, album.brilho) { p ->
+                        if (p is TransferProgress.Uploading && p.total > 0) {
+                            // Progresso agregado: uma barra só, que nunca volta pra trás.
+                            val doPainel = p.sent.toFloat() / p.total
+                            vm.pubProgress(((idx + doPainel) * 100).toInt(), alvos.size * 100, rotulo)
+                        }
                     }
-                }
-            }.getOrDefault(false)
-            container.connection.transferEnded(usb, ok)
-            if (ok) {
-                targetPanel?.let { container.panels.setExpectedCrc(it.ip, r.crc) }
+                }.getOrDefault(false)
+                if (ok) { okTotal++; if (!usb) container.panels.setExpectedCrc(ip, r.crc) } else falhas.add(ip)
+            }
+
+            val tudoOk = falhas.isEmpty() && okTotal > 0
+            container.connection.transferEnded(usb, tudoOk)
+            if (okTotal > 0) {
                 vm.setLive(album, targetPanel?.crcPanel ?: 0, targetPanel?.id ?: "usb")
-                // guarda no histórico para repetir depois com um toque
                 val stamp = SimpleDateFormat("dd-MM HH'h'mm", Locale.getDefault()).format(Date())
                 container.albums.pushHistory(album, "${album.name} · $stamp")
-                vm.pubDone("✓ No painel agora")
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            } else {
-                vm.pubError("Não consegui enviar. Verifique o painel e tente de novo.")
+            }
+            when {
+                tudoOk && alvos.size == 1 -> vm.pubDone("✓ No painel agora")
+                tudoOk -> vm.pubDone("✓ No ar em $okTotal painéis")
+                okTotal > 0 -> vm.pubError("Enviado para $okTotal; falhou em ${falhas.joinToString()}")
+                else -> vm.pubError("Não consegui enviar. Verifique o painel e tente de novo.")
             }
             delay(3500)
             vm.pubReset()
@@ -399,21 +445,9 @@ fun EditarScreen() {
                 OnboardingCard(onDismiss = { showGuide = false; container.settings.onboardingDone = true })
             }
 
-            SegChoice(listOf("Horizontal", "Vertical"), if (vm.portrait) 1 else 0, Modifier.fillMaxWidth()) { vm.portrait = it == 1 }
-
-            // Modo de composição: Padrão (oferta pronta) ou Livre (texto solto).
-            if (cur != null && cur !is FrameDraft.Raw) {
-                val livre = cur is FrameDraft.Msg
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    SegChoice(listOf("Padrão", "Livre"), if (livre) 1 else 0, Modifier.fillMaxWidth()) { vm.setMode(it == 1) }
-                    Text(
-                        if (livre) "Livre: escreva o texto onde quiser — posição e fonte por linha."
-                        else "Padrão: campos prontos de oferta (cabeçalho, preço, medida…).",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+            // Um lugar só para "como esta tela é", na ordem em que se pensa:
+            // formato do painel → tamanho da tela → o que ela mostra → entra ou não.
+            SetupCard(vm, cur)
 
             when (val d = cur) {
                 is FrameDraft.Msg -> MsgForm(d) { vm.replaceSel(it) }
@@ -435,7 +469,7 @@ fun EditarScreen() {
             )
 
             // ===== ÁLBUM =====
-            Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Blue)) {
+            Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Blue), border = accentBorder(Accent.Blue)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                         SectionLabel("Álbum")
@@ -453,11 +487,8 @@ fun EditarScreen() {
                             shape = ButtonShape,
                         ) { Text("Salvar") }
                     }
-                    Button(
-                        onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); doSave(); nav.goToSend(vm.nome) },
-                        shape = ButtonShape,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Icon(Icons.AutoMirrored.Filled.Send, null, Modifier.size(18.dp)); Spacer(Modifier.size(8.dp)); Text("Salvar e enviar") }
+                    // "Salvar e enviar" saiu: Publicar (barra fixa embaixo) já salva
+                    // o álbum antes de mandar. Um caminho só, sem passo extra.
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         AccentOutlinedButton(onClick = { exportLauncher.launch("${vm.nome.ifBlank { "Painel" }}.alb") }, modifier = Modifier.weight(1f)) {
                             Icon(Icons.Filled.Upload, null, Modifier.size(18.dp)); Spacer(Modifier.size(6.dp)); Text("Exportar")
@@ -513,12 +544,38 @@ fun EditarScreen() {
 
         // ===== BARRA DE PUBLICAÇÃO (fixa) — a ação principal, sempre ao alcance =====
         PublishBar(
-            destino = targetPanel?.name ?: if (usbConnected) "Painel por USB" else null,
+            destino = when {
+                viaUsb() -> "Painel por USB"
+                ipsDestino.size > 1 -> "${ipsDestino.size} painéis"
+                // IP digitado na mão ainda não está na lista descoberta: mostra o IP.
+                ipsDestino.size == 1 -> targetPanel?.name ?: ipsDestino[0]
+                usbConnected -> "Painel por USB"
+                else -> null
+            },
             cabe = cabeNoPainel,
             state = vm.pubState,
             progress = vm.pubProgress,
             message = vm.pubMessage,
+            onTrocarDestino = { mostrarDestino = true },
             onPublicar = { publicar() },
+        )
+    }
+
+    if (mostrarDestino) {
+        DestinoSheet(
+            paineis = panels,
+            grupos = remember(panels) { container.panels.groups() },
+            ipsDoGrupo = { container.panels.ipsOfGroup(it) },
+            selecionados = destinos,
+            usbConectado = usbConnected,
+            usarUsb = usarUsb,
+            usarSenha = usarSenha,
+            senha = senhaTx,
+            onSelecionados = { destinos = it; if (it.isNotEmpty()) usarUsb = false },
+            onUsarUsb = { usarUsb = it; if (it) destinos = emptySet() },
+            onUsarSenha = { usarSenha = it; container.settings.useTxPassword = it },
+            onSenha = { senhaTx = it; container.settings.txPassword = it },
+            onDismiss = { mostrarDestino = false },
         )
     }
 
@@ -584,7 +641,7 @@ private fun SequenciaCard(
     snackbar: androidx.compose.material3.SnackbarHostState,
 ) {
     val cur = vm.current
-    Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Teal)) {
+    Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Teal), border = accentBorder(Accent.Teal)) {
         Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SectionLabel("Sequência · ${vm.frames.size} ${if (vm.frames.size == 1) "tela" else "telas"}")
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -628,7 +685,7 @@ private fun PainelCard(
     onSincronizar: () -> Unit,
     onLimpar: () -> Unit,
 ) {
-    Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Green)) {
+    Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Green), border = accentBorder(Accent.Green)) {
         Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 CardHeader(Icons.Filled.Sync, Accent.Green, "Painel")
@@ -677,6 +734,106 @@ private fun formatPreco(valor: String, cents3: Boolean, centsOff: Boolean): Stri
  * Salva + envia numa tacada, mostra para onde vai, avisa se não cabe na memória,
  * e dá o retorno ali mesmo (enviando / no painel / falhou).
  */
+/**
+ * "Como esta tela é" — o único lugar onde se decide formato e conteúdo.
+ *
+ * Antes eram quatro controles em três idiomas diferentes (dois segmentados no topo
+ * do formulário e dois interruptores num cartão lá embaixo), misturando o que vale
+ * para o painel inteiro com o que vale só para a tela atual. Aqui os quatro viram
+ * a mesma coisa — pares de botões com o desenho do resultado — na ordem natural:
+ * **o painel** (deitado/em pé) → **esta tela** (tamanho, conteúdo) → **entra ou não**.
+ */
+@Composable
+private fun SetupCard(vm: EditorViewModel, cur: FrameDraft?) {
+    val cs = MaterialTheme.colorScheme
+    val editavel = cur != null && cur !is FrameDraft.Raw
+    val livre = cur is FrameDraft.Msg
+    val meia = vm.currentHalf ?: true
+    val ligada = vm.currentEnabled ?: true
+
+    Card(
+        Modifier.fillMaxWidth(),
+        colors = accentCardColors(Accent.Sky, 0.14f),
+        border = accentBorder(Accent.Sky),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+
+            // --- 1. O painel (vale para todas as telas) ---
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SectionLabel("O painel · vale para todas as telas", accent = Accent.Sky)
+                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OptionTile(
+                        selected = !vm.portrait, title = "Deitado", hint = "Painel na horizontal",
+                        accent = Accent.Sky, modifier = Modifier.weight(1f).fillMaxHeight(),
+                        onClick = { vm.portrait = false },
+                    ) { PanelShape(1f, tall = false, accent = Accent.Sky, on = !vm.portrait) }
+                    OptionTile(
+                        selected = vm.portrait, title = "Em pé", hint = "Painel na vertical",
+                        accent = Accent.Sky, modifier = Modifier.weight(1f).fillMaxHeight(),
+                        onClick = { vm.portrait = true },
+                    ) { PanelShape(1f, tall = true, accent = Accent.Sky, on = vm.portrait) }
+                }
+            }
+
+            if (editavel) {
+                HorizontalDivider(color = cs.outlineVariant)
+
+                // --- 2. Tamanho desta tela ---
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionLabel("Esta tela ocupa", accent = Accent.Teal)
+                    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OptionTile(
+                            selected = !meia, title = "Painel inteiro", hint = "Uma tela por vez",
+                            accent = Accent.Teal, modifier = Modifier.weight(1f).fillMaxHeight(),
+                            onClick = { vm.setHalf(false) },
+                        ) { PanelShape(1f, vm.portrait, Accent.Teal, on = !meia) }
+                        OptionTile(
+                            selected = meia, title = "Metade", hint = "Duas telas lado a lado",
+                            accent = Accent.Teal, modifier = Modifier.weight(1f).fillMaxHeight(),
+                            onClick = { vm.setHalf(true) },
+                        ) { PanelShape(0.5f, vm.portrait, Accent.Teal, on = meia) }
+                    }
+                }
+
+                HorizontalDivider(color = cs.outlineVariant)
+
+                // --- 3. Conteúdo ---
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionLabel("Esta tela mostra", accent = Accent.Amber)
+                    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OptionTile(
+                            selected = !livre, title = "Oferta", hint = "Preço grande, campos prontos",
+                            accent = Accent.Amber, modifier = Modifier.weight(1f).fillMaxHeight(),
+                            onClick = { vm.setMode(false) },
+                        ) { Icon(Icons.Filled.LocalOffer, null, Modifier.size(24.dp), tint = if (!livre) Accent.Amber else cs.outline) }
+                        OptionTile(
+                            selected = livre, title = "Texto livre", hint = "Escreva o que quiser",
+                            accent = Accent.Amber, modifier = Modifier.weight(1f).fillMaxHeight(),
+                            onClick = { vm.setMode(true) },
+                        ) { Icon(Icons.Filled.Notes, null, Modifier.size(24.dp), tint = if (livre) Accent.Amber else cs.outline) }
+                    }
+                }
+
+                HorizontalDivider(color = cs.outlineVariant)
+
+                // --- 4. O liga/desliga de verdade ---
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Mostrar no painel", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            if (ligada) "Esta tela entra na rotação."
+                            else "Desligada: fica salva, mas o painel pula ela.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (ligada) cs.onSurfaceVariant else Accent.Amber,
+                        )
+                    }
+                    Switch(ligada, { vm.setEnabled(it) })
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun PublishBar(
     destino: String?,
@@ -684,6 +841,7 @@ private fun PublishBar(
     state: EditorViewModel.PubState,
     progress: Float?,
     message: String,
+    onTrocarDestino: () -> Unit,
     onPublicar: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -698,7 +856,13 @@ private fun PublishBar(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Column(
+                    Modifier.weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable(enabled = state != EditorViewModel.PubState.WORKING) { onTrocarDestino() }
+                        .padding(vertical = 4.dp, horizontal = 2.dp),
+                    verticalArrangement = Arrangement.spacedBy(1.dp),
+                ) {
                     when (state) {
                         EditorViewModel.PubState.DONE ->
                             Text(message, style = MaterialTheme.typography.titleSmall, color = Accent.Green)
@@ -708,14 +872,25 @@ private fun PublishBar(
                             Text(message, style = MaterialTheme.typography.bodyMedium, color = cs.onSurface)
                         EditorViewModel.PubState.IDLE -> {
                             if (destino != null) {
-                                MonoText("PARA", size = 9)
-                                Text(destino, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                                MonoText("PARA · TOQUE PARA TROCAR", size = 9)
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(destino, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                                    Icon(Icons.Filled.ExpandMore, null, Modifier.size(16.dp), tint = cs.onSurfaceVariant)
+                                }
                                 if (cabe == false) {
                                     Text("⚠ não cabe na memória do painel", style = MaterialTheme.typography.bodySmall, color = Accent.Rose)
                                 }
                             } else {
                                 Text("Nenhum painel encontrado", style = MaterialTheme.typography.titleSmall)
-                                Text("Ligue o painel na mesma rede Wi-Fi.", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+                                // Saída pelo toque: dentro da folha dá pra digitar o IP na mão.
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        "Ligue-o na mesma rede Wi-Fi, ou toque para digitar o IP",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = cs.primary,
+                                    )
+                                    Icon(Icons.Filled.ExpandMore, null, Modifier.size(14.dp), tint = cs.primary)
+                                }
                             }
                         }
                     }
@@ -979,15 +1154,8 @@ private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
 
 @Composable
 private fun MsgForm(draft: FrameDraft.Msg, onChange: (FrameDraft.Msg) -> Unit) {
+    // Tamanho e liga/desliga vivem no SetupCard, no topo — aqui fica só o conteúdo.
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Card {
-            Column {
-                ToggleRow("Meia tela", draft.halfScreen) { onChange(draft.copy(halfScreen = it)) }
-                HorizontalDivider(Modifier.padding(horizontal = 14.dp), color = MaterialTheme.colorScheme.outlineVariant)
-                ToggleRow("Habilitar quadro", draft.enabled) { onChange(draft.copy(enabled = it)) }
-            }
-        }
-
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             SectionLabel("Borda")
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -998,7 +1166,7 @@ private fun MsgForm(draft: FrameDraft.Msg, onChange: (FrameDraft.Msg) -> Unit) {
         }
 
         // Auto-ajuste: o app quebra, dimensiona e centraliza o texto sozinho.
-        Card(colors = accentCardColors(Accent.Teal)) {
+        Card(colors = accentCardColors(Accent.Teal), border = accentBorder(Accent.Teal)) {
             Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 InlineToggle("Ajustar o texto à tela", draft.autoFit) { onChange(draft.copy(autoFit = it)) }
                 Text(
@@ -1168,14 +1336,7 @@ private fun OfeForm(draft: FrameDraft.Ofe, onChange: (FrameDraft.Ofe) -> Unit) {
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
-        // interruptores agrupados
-        Card {
-            Column {
-                ToggleRow("Meia tela", draft.halfScreen) { onChange(draft.copy(halfScreen = it)) }
-                HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
-                ToggleRow("Habilitar quadro", s.enabled) { set(s.copy(enabled = it)) }
-            }
-        }
+        // Tamanho e liga/desliga vivem no SetupCard, no topo — aqui só o conteúdo.
 
         // === TEXTOS (cabeçalho/título/subtítulo) ===
         Card {
@@ -1200,7 +1361,7 @@ private fun OfeForm(draft: FrameDraft.Ofe, onChange: (FrameDraft.Ofe) -> Unit) {
         }
 
         // === PREÇO (herói do formulário) ===
-        Card(colors = accentCardColors(Accent.Amber)) {
+        Card(colors = accentCardColors(Accent.Amber), border = accentBorder(Accent.Amber)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionLabel("Preço")
                 OutlinedTextField(

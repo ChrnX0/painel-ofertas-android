@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 fun OnboardingCard(onDismiss: () -> Unit, modifier: Modifier = Modifier) {
-    Card(modifier.fillMaxWidth(), colors = accentCardColors(Accent.Blue)) {
+    Card(modifier.fillMaxWidth(), colors = accentCardColors(Accent.Blue), border = accentBorder(Accent.Blue)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("Como funciona", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)

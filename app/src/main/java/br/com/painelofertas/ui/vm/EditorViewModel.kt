@@ -57,9 +57,14 @@ class EditorViewModel : ViewModel() {
 
     /** Marca o resultado da publicação (a UI mostra e some sozinho depois). */
     fun pubStart() { pubState = PubState.WORKING; pubProgress = 0f; pubMessage = "Preparando…" }
-    fun pubProgress(sent: Int, total: Int) {
+    /**
+     * [rotulo] identifica o painel da vez quando o envio é para vários — sem ele
+     * a barra parece travar, porque o percentual é o do lote inteiro.
+     */
+    fun pubProgress(sent: Int, total: Int, rotulo: String = "") {
         pubProgress = if (total > 0) sent.toFloat() / total else null
-        pubMessage = "Enviando… ${(100f * sent / total.coerceAtLeast(1)).toInt()}%"
+        val pct = (100f * sent / total.coerceAtLeast(1)).toInt()
+        pubMessage = if (rotulo.isBlank()) "Enviando… $pct%" else "$rotulo · $pct%"
     }
     fun pubDone(msg: String) { pubState = PubState.DONE; pubProgress = 1f; pubMessage = msg }
     fun pubError(msg: String) { pubState = PubState.ERROR; pubProgress = null; pubMessage = msg }
@@ -83,6 +88,37 @@ class EditorViewModel : ViewModel() {
             frames[sel] = FrameDraft.Ofe(name = d.name, halfScreen = d.halfScreen)
         }
     }
+
+    /**
+     * Formato da tela atual: metade do painel (duas telas lado a lado) ou o painel
+     * inteiro. Fica aqui, e não em cada formulário, porque `halfScreen` mora em
+     * lugares diferentes conforme o tipo — a UI não precisa saber disso.
+     */
+    fun setHalf(half: Boolean) {
+        when (val d = current) {
+            is FrameDraft.Msg -> replaceSel(d.copy(halfScreen = half))
+            is FrameDraft.Ofe -> replaceSel(d.copy(halfScreen = half))
+            else -> {}
+        }
+    }
+
+    /** A tela aparece na rotação do painel? Desligada, ela é simplesmente pulada. */
+    fun setEnabled(on: Boolean) {
+        when (val d = current) {
+            is FrameDraft.Msg -> replaceSel(d.copy(enabled = on))
+            is FrameDraft.Ofe -> replaceSel(d.copy(spec = d.spec.copy(enabled = on)))
+            else -> {}
+        }
+    }
+
+    /** Estado atual dos dois ajustes acima (null quando a tela veio pronta do painel). */
+    val currentHalf: Boolean? get() = current?.halfScreen
+    val currentEnabled: Boolean?
+        get() = when (val d = current) {
+            is FrameDraft.Msg -> d.enabled
+            is FrameDraft.Ofe -> d.spec.enabled
+            else -> null
+        }
 
     fun addMsg(name: String = "") { frames.add(FrameDraft.Msg(name = name)); selected = frames.lastIndex }
     fun addOfe(name: String = "") { frames.add(FrameDraft.Ofe(name = name)); selected = frames.lastIndex }

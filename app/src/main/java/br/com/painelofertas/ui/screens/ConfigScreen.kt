@@ -61,6 +61,7 @@ import br.com.painelofertas.ui.components.Appear
 import br.com.painelofertas.ui.components.CardHeader
 import br.com.painelofertas.ui.components.EffectPicker
 import br.com.painelofertas.ui.components.PanelEffect
+import br.com.painelofertas.ui.components.accentBorder
 import br.com.painelofertas.ui.components.accentCardColors
 import br.com.painelofertas.ui.theme.ledColorAt
 import br.com.painelofertas.ui.components.MonoText
@@ -92,7 +93,7 @@ fun ConfigScreen() {
             }
         }
         Appear(delayMillis = 50) {
-            Card(Modifier.fillMaxWidth().padding(top = 8.dp), colors = accentCardColors(Accent.Lilac)) {
+            Card(Modifier.fillMaxWidth().padding(top = 8.dp), colors = accentCardColors(Accent.Lilac), border = accentBorder(Accent.Lilac)) {
                 Column(Modifier.padding(16.dp)) {
                     CardHeader(Icons.Filled.Palette, Accent.Lilac, "Tema do aplicativo", "Aparência do app no celular — não altera o painel.")
                     SegChoice(
@@ -105,7 +106,7 @@ fun ConfigScreen() {
         }
 
         Appear(delayMillis = 90) {
-            Card(Modifier.fillMaxWidth().padding(top = 8.dp), colors = accentCardColors(Accent.Amber)) {
+            Card(Modifier.fillMaxWidth().padding(top = 8.dp), colors = accentCardColors(Accent.Amber), border = accentBorder(Accent.Amber)) {
                 Column(Modifier.padding(16.dp)) {
                     CardHeader(Icons.Filled.Lightbulb, Accent.Amber, "Prévia — cor do LED")
                     Row(
@@ -139,7 +140,7 @@ fun ConfigScreen() {
         }
 
         Appear(delayMillis = 130) {
-            Card(Modifier.fillMaxWidth().padding(top = 8.dp), colors = accentCardColors(Accent.Teal)) {
+            Card(Modifier.fillMaxWidth().padding(top = 8.dp), colors = accentCardColors(Accent.Teal), border = accentBorder(Accent.Teal)) {
                 Column(Modifier.padding(16.dp)) {
                     CardHeader(Icons.Filled.AutoAwesome, Accent.Teal, "Efeito das telas no painel", "Toque para ver como fica — vale para todas as telas.")
 

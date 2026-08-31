@@ -79,6 +79,7 @@ import br.com.painelofertas.ui.components.Appear
 import br.com.painelofertas.ui.components.ButtonShape
 import br.com.painelofertas.ui.components.CardHeader
 import br.com.painelofertas.ui.components.EmptyState
+import br.com.painelofertas.ui.components.accentBorder
 import br.com.painelofertas.ui.components.accentCardColors
 import br.com.painelofertas.ui.components.MonoText
 import br.com.painelofertas.ui.components.SectionLabel
@@ -197,7 +198,7 @@ private fun DiagnosticoCard() {
     var probe by remember { mutableStateOf<WifiModuleConfigurator.DeviceProbe?>(null) }
     var probeMsg by remember { mutableStateOf("") }
 
-    Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Lilac)) {
+    Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Lilac), border = accentBorder(Accent.Lilac)) {
         Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             CardHeader(Icons.Filled.Memory, Accent.Lilac, "Diagnóstico do dispositivo")
 
@@ -308,7 +309,7 @@ private fun chipName(vid: Int): String = when (vid) {
 private fun RedeAparelhoCard(localIp: String) {
     val container = rememberContainer()
     var dhcp by remember { mutableStateOf(container.settings.dhcp) }
-    Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Blue)) {
+    Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Blue), border = accentBorder(Accent.Blue)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             CardHeader(Icons.Filled.Router, Accent.Blue, "Rede do aparelho", "Como o painel encontra este celular na rede.")
             Column(
@@ -350,7 +351,7 @@ private fun PanelPasswordCard(
         }
     }
 
-    Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Amber)) {
+    Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Amber), border = accentBorder(Accent.Amber)) {
         Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             CardHeader(Icons.Filled.Lock, Accent.Amber, "Senha do painel (via USB)")
             if (!usbConnected) {
@@ -420,7 +421,7 @@ private fun PanelCard(
     var brilho by remember(p.id, p.brightness) { mutableFloatStateOf(p.brightness.toFloat()) }
     var sensor by remember(p.id, p.sensorAuto) { mutableStateOf(p.sensorAuto) }
 
-    Card(Modifier.fillMaxWidth(), colors = accentCardColors(statusColor(p.status))) {
+    Card(Modifier.fillMaxWidth(), colors = accentCardColors(statusColor(p.status)), border = accentBorder(statusColor(p.status))) {
         Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
 
             // status (chip colorido) + excluir
@@ -588,7 +589,7 @@ private fun WifiConfigCard(
     var senha by remember { mutableStateOf("") }
     var msg by remember { mutableStateOf("") }
 
-    Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Teal)) {
+    Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Teal), border = accentBorder(Accent.Teal)) {
         Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             CardHeader(Icons.Filled.Wifi, Accent.Teal, "Conectar painel novo (via USB)")
             if (!usbConnected) {

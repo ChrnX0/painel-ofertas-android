@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Menu
@@ -78,7 +77,6 @@ import br.com.painelofertas.ui.components.StatusPill
 import br.com.painelofertas.ui.screens.AgendaScreen
 import br.com.painelofertas.ui.screens.ConfigScreen
 import br.com.painelofertas.ui.screens.EditarScreen
-import br.com.painelofertas.ui.screens.EnviarScreen
 import br.com.painelofertas.ui.screens.PaineisScreen
 import br.com.painelofertas.ui.theme.PainelOfertasTheme
 import br.com.painelofertas.ui.vm.AppViewModel
@@ -122,9 +120,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * A antiga aba "Enviar" foi absorvida pela barra Publicar do editor: o destino
+ * (um painel, vários, um grupo ou o USB) se escolhe no momento de publicar, sem
+ * o usuário ter que salvar um álbum, trocar de tela e reencontrá-lo lá.
+ */
 private enum class Destino(val label: String, val icon: ImageVector) {
     EDITAR("Editar", Icons.Filled.Edit),
-    ENVIAR("Enviar", Icons.AutoMirrored.Filled.Send),
     PAINEIS("Painéis", Icons.Filled.Tv),
     AGENDA("Agenda", Icons.Filled.CalendarMonth),
     CONFIG("Config", Icons.Filled.Settings),
@@ -153,7 +155,7 @@ fun PainelOfertasApp() {
     // Painel identificado por NFC: avisa e leva direto para a lista de painéis.
     LaunchedEffect(nfcAviso) {
         if (nfcAviso.isNotBlank()) {
-            nav.selectedTab = 2
+            nav.selectedTab = AppViewModel.TAB_PAINEIS
             snackbar.showSnackbar(nfcAviso)
             nfcAviso = ""
         }
@@ -263,7 +265,6 @@ fun PainelOfertasApp() {
                     ) { idx ->
                         when (destinos[idx]) {
                             Destino.EDITAR -> EditarScreen()
-                            Destino.ENVIAR -> EnviarScreen()
                             Destino.PAINEIS -> PaineisScreen()
                             Destino.AGENDA -> AgendaScreen()
                             Destino.CONFIG -> ConfigScreen()

@@ -8,6 +8,51 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.42.0] — 2026-08-30 · `versionCode 44`
+
+Duas frentes: **menos telas para o mesmo trabalho** e **cor de verdade** no tema.
+
+### Alterado — a aba "Enviar" deixou de existir
+- **Publicar virou uma ação, não um destino.** O caminho antigo era "salvar álbum →
+  trocar de aba → reencontrar o álbum → escolher painel → enviar". Agora é **um
+  toque** na barra Publicar, que já salva o álbum antes de mandar
+- **Destino escolhido na própria barra**: toque em "PARA" e abre a folha *Publicar
+  em* — um painel, vários, um grupo inteiro ou o USB, com a senha de transmissão
+  ali mesmo, no momento em que ela importa
+- **Envio para vários painéis com barra única** que nunca volta para trás, dizendo
+  qual painel está indo (`Painel 2 de 3 (Açougue) · 47%`) e um resumo por painel
+  ao final quando algum falha
+- **"Digitar o IP na mão"** dentro da folha — painel em outra sub-rede ou que ainda
+  não respondeu à varredura continua alcançável. Era a única função que a aba
+  Enviar tinha e não existia em outro lugar
+- Removidos `EnviarScreen.kt` e `SendViewModel.kt` (o estado de destino existia em
+  duplicata) e o botão "Salvar e enviar", que virou redundante
+- Menu lateral agora tem **4 itens** (Editar · Painéis · Agenda · Config)
+
+### Alterado — o bloco de ajustes da tela
+- Eram **quatro controles em três idiomas** (dois segmentados no topo, dois
+  interruptores num cartão lá embaixo), misturando o que vale para o painel inteiro
+  com o que vale só para a tela atual. Agora é **um cartão só**, na ordem em que se
+  pensa: **o painel** (deitado/em pé) → **esta tela ocupa** (inteiro/metade) →
+  **esta tela mostra** (oferta/texto livre) → **mostrar no painel** (o liga/desliga
+  de verdade, o único que continua sendo um interruptor)
+- As escolhas viraram **botões com o desenho do resultado** — o lojista vê a forma
+  da tela em vez de ler "meia tela" e ter que imaginar
+- Vocabulário unificado: acabou o "quadro" convivendo com "tela"
+- `setHalf` / `setEnabled` no ViewModel: os dois formulários repetiam o mesmo par
+  de interruptores porque os campos moram em profundidades diferentes nos tipos
+
+### Alterado — mais cor, mesmo tom pastel
+- Banho de cor dos cartões de `0.16` para **`0.22`** (no escuro o pastel diluía em
+  cinza; nesse ponto a cor se lê e o texto ainda fica em ~7:1 de contraste)
+- **Contorno no tom do cartão**: área pequena aceita cor bem mais saturada sem
+  atrapalhar a leitura — é o que faz a cor parecer intencional
+- Ícone do cabeçalho com anel da própria cor; sobrancelhas de seção podem assumir
+  o tom da seção
+- Superfícies do tema escuro com um leve azul-arroxeado no lugar do cinza puro,
+  e o claro com fundo levemente azulado para o pastel dos cartões aparecer
+- Três acentos novos: `Peach`, `Mint`, `Sky`
+
 ## [0.41.0] — 2026-08-30 · `versionCode 43`
 
 ### Adicionado

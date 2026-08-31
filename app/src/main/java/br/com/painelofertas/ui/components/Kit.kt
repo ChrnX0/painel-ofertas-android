@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -22,6 +23,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardColors
@@ -67,6 +71,9 @@ object Accent {
     val Lilac = Color(0xFFC3B0F5)
     val Rose = Color(0xFFF2AEC6)
     val Teal = Color(0xFF8FD9D2)
+    val Peach = Color(0xFFF6BFA0)
+    val Mint = Color(0xFFA8E6A3)
+    val Sky = Color(0xFF9BD5F0)
     val Gray = Color(0xFF9AA6B6)
 }
 
@@ -78,10 +85,25 @@ val OnAccent = Color(0xFF0A0F16)
  * porém bem suave (nada gritante). Combine com um [CardHeader] do mesmo tom.
  */
 @Composable
-fun accentCardColors(accent: Color): CardColors {
+fun accentCardColors(accent: Color): CardColors = accentCardColors(accent, 0.22f)
+
+/**
+ * [forca] é quanto da cor entra na superfície. 0.22 é o padrão: num fundo escuro
+ * a mistura ainda deixa o texto em ~7:1 de contraste, e é o ponto onde a cor
+ * finalmente **se lê** como cor, não como cinza sujo.
+ */
+@Composable
+fun accentCardColors(accent: Color, forca: Float): CardColors {
     val base = MaterialTheme.colorScheme.surfaceContainerHigh
-    return CardDefaults.cardColors(containerColor = lerp(base, accent, 0.10f))
+    return CardDefaults.cardColors(containerColor = lerp(base, accent, forca))
 }
+
+/**
+ * Fio de contorno no tom do cartão. A borda carrega cor em **área pequena**, então
+ * pode ser bem mais saturada que o preenchimento sem atrapalhar a leitura — é o
+ * que faz a cor parecer intencional em vez de um banho apagado.
+ */
+fun accentBorder(accent: Color) = BorderStroke(1.dp, accent.copy(alpha = 0.35f))
 
 /** Botão preenchido em cor **pastel** (texto escuro para contraste). */
 @Composable
@@ -191,6 +213,85 @@ fun SegChoice(
 }
 
 /**
+ * Botão de escolha com **desenho do que vai acontecer**. Duas ou três lado a lado
+ * substituem um segmentado (ou um interruptor com rótulo abstrato): o lojista vê
+ * a forma da tela em vez de ler "meia tela" e ter que imaginar.
+ *
+ * Ligado/desligado no mesmo idioma em toda a tela — é o que faz os passos
+ * parecerem naturais em vez de um formulário.
+ */
+@Composable
+fun OptionTile(
+    selected: Boolean,
+    title: String,
+    hint: String,
+    accent: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    visual: @Composable () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val bg by animateColorAsState(
+        if (selected) lerp(cs.surfaceContainerHigh, accent, 0.20f) else cs.surfaceContainerLow,
+        tween(220), label = "tileBg",
+    )
+    val edge by animateColorAsState(
+        if (selected) accent.copy(alpha = 0.75f) else cs.outlineVariant,
+        tween(220), label = "tileEdge",
+    )
+    Column(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(bg)
+            .border(if (selected) 1.5.dp else 1.dp, edge, RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 11.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { visual() }
+            // A marca de seleção fecha o par: um está ligado, o outro não.
+            Icon(
+                if (selected) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
+                null,
+                Modifier.size(17.dp),
+                tint = if (selected) accent else cs.outline,
+            )
+        }
+        Text(
+            title,
+            style = MaterialTheme.typography.titleSmall,
+            color = if (selected) cs.onSurface else cs.onSurfaceVariant,
+        )
+        Text(hint, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+    }
+}
+
+/**
+ * Miniatura da placa de LED: o retângulo escuro do painel com a área que a tela
+ * vai ocupar acesa em [accent]. É o desenho usado nos [OptionTile] de formato.
+ *
+ * [fill] = fração da largura ocupada (1f painel inteiro, 0.5f meia tela);
+ * [tall] = painel em pé.
+ */
+@Composable
+fun PanelShape(fill: Float, tall: Boolean, accent: Color, on: Boolean) {
+    val cs = MaterialTheme.colorScheme
+    val w = if (tall) 26.dp else 46.dp
+    val h = if (tall) 34.dp else 24.dp
+    Box(
+        Modifier.size(width = w, height = h).clip(RoundedCornerShape(4.dp)).background(PanelBg)
+            .border(1.dp, cs.outlineVariant, RoundedCornerShape(4.dp))
+            .padding(2.5.dp),
+    ) {
+        Box(
+            Modifier.fillMaxWidth(fill).height(h - 5.dp).clip(RoundedCornerShape(2.dp))
+                .background(if (on) accent.copy(alpha = 0.85f) else cs.outline.copy(alpha = 0.35f)),
+        )
+    }
+}
+
+/**
  * Cabeçalho de cartão com **ícone colorido** num quadradinho tingido — injeta cor
  * e hierarquia visual (estilo One UI). O [tint] dá a identidade do cartão
  * (azul=rede, âmbar=segurança, verde=painel, etc.).
@@ -198,8 +299,11 @@ fun SegChoice(
 @Composable
 fun CardHeader(icon: ImageVector, tint: Color, title: String, subtitle: String? = null, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Quadradinho tingido + anel do mesmo tom: área pequena, cor cheia.
         Box(
-            Modifier.size(38.dp).clip(RoundedCornerShape(11.dp)).background(tint.copy(alpha = 0.16f)),
+            Modifier.size(38.dp).clip(RoundedCornerShape(11.dp))
+                .background(tint.copy(alpha = 0.24f))
+                .border(1.dp, tint.copy(alpha = 0.45f), RoundedCornerShape(11.dp)),
             contentAlignment = Alignment.Center,
         ) { Icon(icon, null, tint = tint, modifier = Modifier.size(21.dp)) }
         Column {
@@ -213,14 +317,15 @@ fun CardHeader(icon: ImageVector, tint: Color, title: String, subtitle: String? 
 
 /** Rótulo de seção (sobrancelha): mono, maiúsculo, espaçado — ar de instrumento. */
 @Composable
-fun SectionLabel(text: String, modifier: Modifier = Modifier) {
+fun SectionLabel(text: String, modifier: Modifier = Modifier, accent: Color? = null) {
     Text(
         text = text.uppercase(),
         fontFamily = Mono,
         fontSize = 11.sp,
         fontWeight = FontWeight.Medium,
         letterSpacing = 1.6.sp,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        // Com acento a sobrancelha assume a cor da seção; sem ele, fica neutra.
+        color = accent ?: MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier.padding(start = 2.dp),
     )
 }
