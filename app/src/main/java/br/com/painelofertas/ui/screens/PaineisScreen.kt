@@ -10,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -83,6 +84,7 @@ import br.com.painelofertas.ui.components.CardHeader
 import br.com.painelofertas.ui.components.EmptyState
 import br.com.painelofertas.ui.components.accentBorder
 import br.com.painelofertas.ui.components.accentCardColors
+import br.com.painelofertas.ui.components.Motion
 import br.com.painelofertas.ui.components.MonoText
 import br.com.painelofertas.ui.components.SectionLabel
 import br.com.painelofertas.ui.LocalSnackbar
@@ -154,6 +156,8 @@ fun PaineisScreen() {
                     PanelCard(
                         p,
                         usbConnected = usbConnected,
+                        // Um painel só já vem aberto: não há o que procurar.
+                        inicialmenteAberto = panels.size == 1,
                         onApply = { v, sensor ->
                             container.panels.setBrightness(p.id, v)
                             container.panels.setSensorAuto(p.id, sensor)
@@ -436,10 +440,20 @@ private fun PanelPasswordCard(
     }
 }
 
+/**
+ * Cartão de um painel — **fechado por padrão**.
+ *
+ * Aberto, ele é uma parede: nome, sincronia, IP, memória, CRC, brilho, sensor e
+ * sete botões. Com dois ou três painéis, achar o certo virava rolagem. Fechado,
+ * mostra só o que responde "é este?" — bolinha de estado, nome, IP e brilho — e
+ * o resto abre com um toque. Um painel sozinho já vem aberto, porque aí não há o
+ * que procurar.
+ */
 @Composable
 private fun PanelCard(
     p: Panel,
     usbConnected: Boolean,
+    inicialmenteAberto: Boolean,
     onApply: (Int, Boolean) -> Unit,
     onIdentificar: () -> Unit,
     onLigar: () -> Unit,
@@ -453,11 +467,51 @@ private fun PanelCard(
     var nome by remember(p.id) { mutableStateOf(p.name) }
     var brilho by remember(p.id, p.brightness) { mutableFloatStateOf(p.brightness.toFloat()) }
     var sensor by remember(p.id, p.sensorAuto) { mutableStateOf(p.sensorAuto) }
+    var aberto by remember(p.id) { mutableStateOf(inicialmenteAberto) }
 
-    Card(Modifier.fillMaxWidth(), colors = accentCardColors(statusColor(p.status)), border = accentBorder(statusColor(p.status))) {
-        Column(Modifier.padding(16.dp).animateContentSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    val tom = statusColor(p.status)
+    val giro by animateFloatAsState(if (aberto) 180f else 0f, Motion.bouncy(), label = "chevron")
+    val press = remember { MutableInteractionSource() }
 
-            // status (chip colorido) + excluir
+    Card(Modifier.fillMaxWidth(), colors = accentCardColors(tom), border = accentBorder(tom)) {
+        Column(Modifier.animateContentSize()) {
+
+            // ===== CABEÇALHO — sempre visível, e é o que abre/fecha =====
+            Row(
+                Modifier.fillMaxWidth()
+                    .clickable(interactionSource = press, indication = null) { aberto = !aberto }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Box(Modifier.size(10.dp).clip(CircleShape).background(tom))
+                Column(Modifier.weight(1f)) {
+                    Text(p.name, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                    MonoText(
+                        "${p.ip} · ${statusLabel(p.status)}" +
+                            if (p.status == PanelStatus.ONLINE) " · brilho ${p.brightness}%" else "",
+                        size = 10,
+                    )
+                }
+                Icon(
+                    Icons.Filled.ExpandMore,
+                    if (aberto) "Recolher ${p.name}" else "Abrir ${p.name}",
+                    Modifier.size(22.dp).rotate(giro),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            // Avisos que precisam aparecer mesmo fechado — "desatualizado" é
+            // justamente o que faz o lojista abrir o cartão.
+            if (!aberto && p.syncState == SyncState.OUTDATED) {
+                Box(Modifier.padding(start = 38.dp, end = 16.dp, bottom = 12.dp)) { SyncBadge(p.syncState) }
+            }
+
+            androidx.compose.animation.AnimatedVisibility(aberto) {
+                Column(
+                    Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 StatusChip(p.status)
                 IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, "Remover da lista", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -511,6 +565,8 @@ private fun PanelCard(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             PanelConfigSection(p, usbConnected, onSaveConfig, onApplyUsb)
+                }
+            }
         }
     }
 }

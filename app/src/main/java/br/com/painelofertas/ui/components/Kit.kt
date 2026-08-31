@@ -10,6 +10,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.graphicsLayer
+import br.com.painelofertas.ui.theme.SquircleBezel
+import br.com.painelofertas.ui.theme.SquircleTile
+import br.com.painelofertas.ui.theme.SquircleChip
 import br.com.painelofertas.ui.theme.SquircleShape
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
@@ -55,6 +58,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -174,13 +178,17 @@ fun Modifier.breathingBorder(
     max: Float = 0.62f,
 ): Modifier {
     val breath = LocalBreath.current
-    return drawWithContent {
-        drawContent()
-        drawOutline(
-            outline = shape.createOutline(size, layoutDirection, this),
-            color = accent.copy(alpha = breath.value.entre(min, max)),
-            style = Stroke(largura.toPx()),
-        )
+    // `drawWithCache` e não `drawWithContent`: o contorno superelíptico é um Path
+    // de ~60 pontos, e reconstruí-lo a cada quadro (15×/s, em vários cartões ao
+    // mesmo tempo) pesava de verdade na renderização por software. Aqui ele é
+    // montado **uma vez por tamanho**; só a cor, lida na fase de desenho, muda.
+    return drawWithCache {
+        val outline = shape.createOutline(size, layoutDirection, this)
+        val traco = Stroke(largura.toPx())
+        onDrawWithContent {
+            drawContent()
+            drawOutline(outline, color = accent.copy(alpha = breath.value.entre(min, max)), style = traco)
+        }
     }
 }
 
@@ -310,7 +318,7 @@ fun OptionTile(
     visual: @Composable () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val forma = SquircleShape(18.dp)
+    val forma = SquircleTile
     val bg by animateColorAsState(
         if (selected) lerp(cs.surfaceContainerHigh, accent, if (LocalIsLight.current) 0.16f else 0.22f)
         else cs.surfaceContainerLow,
@@ -394,9 +402,9 @@ fun CardHeader(icon: ImageVector, tint: Color, title: String, subtitle: String? 
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         // Quadradinho tingido + anel do mesmo tom: área pequena, cor cheia.
         Box(
-            Modifier.size(38.dp).clip(SquircleShape(13.dp))
+            Modifier.size(38.dp).clip(SquircleChip)
                 .background(tint.copy(alpha = 0.24f))
-                .border(1.dp, tint.copy(alpha = 0.45f), SquircleShape(13.dp)),
+                .border(1.dp, tint.copy(alpha = 0.45f), SquircleChip),
             contentAlignment = Alignment.Center,
         ) { Icon(icon, null, tint = tint, modifier = Modifier.size(21.dp)) }
         Column {
@@ -494,7 +502,7 @@ fun LedBezel(
                     filterQuality = FilterQuality.Low,
                 )
             }
-            .clip(SquircleShape(24.dp))
+            .clip(SquircleBezel)
             .background(
                 Brush.linearGradient(
                     listOf(Color(0xFF2A2F38), Color(0xFF141821), Color(0xFF1E232C)),
@@ -506,7 +514,7 @@ fun LedBezel(
             Modifier
                 .fillMaxWidth()
                 .height(boardHeight)
-                .clip(SquircleShape(13.dp))
+                .clip(SquircleChip)
                 .background(PanelBg),
             contentAlignment = Alignment.Center,
             content = content,

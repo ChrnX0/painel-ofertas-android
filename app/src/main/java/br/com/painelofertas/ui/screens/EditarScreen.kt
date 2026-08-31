@@ -152,6 +152,7 @@ import br.com.painelofertas.ui.components.SoftDivider
 import br.com.painelofertas.ui.components.SegChoice
 import br.com.painelofertas.ui.LocalSnackbar
 import br.com.painelofertas.ui.rememberContainer
+import br.com.painelofertas.ui.theme.SquircleTab
 import br.com.painelofertas.ui.theme.SquircleShape
 import br.com.painelofertas.ui.theme.ledColorAt
 import java.text.SimpleDateFormat
@@ -930,7 +931,7 @@ private fun PublishBar(
 @Composable
 private fun ScreensBar(vm: EditorViewModel, onAdd: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val forma = SquircleShape(17.dp)
+    val forma = SquircleTab
     Row(
         Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),

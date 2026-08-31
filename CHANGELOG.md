@@ -8,6 +8,54 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.46.0] — 2026-08-31 · `versionCode 48`
+
+### Corrigido — dois gargalos reais de desempenho
+- **`SquircleShape` não implementava `equals`.** O Compose decide se um
+  modificador mudou comparando parâmetros: sem `equals`, cada recomposição criava
+  uma instância nova, todo `clip`/`border` se considerava alterado e **invalidava
+  o desenho** — o que, para um `Outline.Generic`, significa reconstruir o `Path`
+  de ~60 pontos. Espalhado por dezenas de elementos, era caro. `RoundedCornerShape`
+  implementa `equals` exatamente por isso
+- Formas mais usadas viraram **instâncias de topo** (`SquircleChip`, `SquircleTile`,
+  `SquircleTab`, `SquircleBezel`): não alocam por recomposição
+- **Prévia de LED agora é rasterizada em bitmap.** Uma placa 96×92 tem ~8.800
+  células, cada acesa custando quatro círculos: até **35 mil operações por
+  quadro**, repetidas sempre que algo por perto se mexia (o fôlego, o arraste, a
+  aurora). Agora é desenhada **uma vez** num `ImageBitmap` via `drawWithCache` e
+  depois só copiada — refaz apenas quando o tamanho ou o conteúdo muda
+- **`breathingBorder` passou a usar `drawWithCache`**: o contorno é montado uma
+  vez por tamanho, e só a cor muda a cada quadro
+- Resultado medido no emulador: CPU em repouso de **~100% para ~60%**
+
+### Alterado — a gaveta entrou no sistema de design
+Era a única superfície que não tinha recebido nada: fundo chapado, ícones cinzas,
+o logo como adesivo branco de canto duro e dois terços de vazio.
+- Cada destino tem **seu tom** (Editar azul, Painéis verde-água, Agenda lilás,
+  Config âmbar) e o mesmo **quadradinho de ícone tingido** dos cartões
+- Item selecionado ganha o banho de cor do próprio destino e o **contorno que
+  respira**; todos têm física de toque
+- Cada destino ganhou uma linha de apoio ("Montar e publicar as telas")
+- O logo virou **emblema**: canto superelíptico e anel no tom da marca
+- O vazio virou **rodapé de estado** — quantos painéis na rede, se há cabo USB, e
+  a versão. Responde "o app está vendo meu painel?" sem navegar até Painéis
+
+### Alterado — cartões de painel recolhem
+- Aberto, o cartão é uma parede: nome, sincronia, IP, memória, CRC, brilho, sensor
+  e sete botões. Com dois ou três painéis, achar o certo virava rolagem
+- Fechado mostra só o que responde "é este?" — bolinha de estado, nome, IP e
+  brilho — e abre com um toque. **Um painel sozinho já vem aberto**
+- O aviso "desatualizado" aparece mesmo fechado: é justamente o que faz abrir
+
+### Nota sobre os ANRs no emulador
+O trace apontou a causa e **não é o app**: a `RenderThread` trava em
+`GrGLCompileAndAttachShader → qemu_pipe_read`. Cada shader GL novo faz uma
+ida-e-volta pelo pipe do QEMU até o host, e qualquer combinação visual inédita
+custa um shader. Por isso o ANR aparece na *primeira* vez que uma tela nova é
+desenhada, em builds novas e antigas. Em aparelho real a compilação é de
+milissegundos e fica em cache. **Ainda assim, os dois gargalos acima eram reais e
+valem por si.**
+
 ## [0.45.0] — 2026-08-30 · `versionCode 47`
 
 ### Adicionado — trocar de tela arrastando

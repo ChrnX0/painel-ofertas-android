@@ -13,8 +13,12 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,11 +30,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -78,23 +85,31 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import br.com.painelofertas.BuildConfig
 import br.com.painelofertas.PainelApp
 import br.com.painelofertas.R
+import br.com.painelofertas.net.LinkPhase
 import br.com.painelofertas.nfc.NfcReader
 import br.com.painelofertas.ui.components.Accent
 import br.com.painelofertas.ui.components.AuroraBackground
+import br.com.painelofertas.ui.components.MonoText
 import br.com.painelofertas.ui.components.Motion
 import br.com.painelofertas.ui.components.Appear
 import br.com.painelofertas.ui.components.BreathProvider
 import br.com.painelofertas.ui.components.ButtonShape
 import br.com.painelofertas.ui.components.SoftDivider
+import br.com.painelofertas.ui.components.breathingBorder
+import br.com.painelofertas.ui.components.pressBounce
 import br.com.painelofertas.ui.components.StatusPill
 import br.com.painelofertas.ui.screens.AgendaScreen
 import br.com.painelofertas.ui.screens.ConfigScreen
 import br.com.painelofertas.ui.screens.EditarScreen
 import br.com.painelofertas.ui.screens.PaineisScreen
 import br.com.painelofertas.ui.theme.PainelOfertasTheme
+import br.com.painelofertas.ui.theme.SquircleChip
+import br.com.painelofertas.ui.theme.SquircleShape
 import br.com.painelofertas.ui.vm.AppViewModel
 import kotlin.math.absoluteValue
 import kotlinx.coroutines.launch
@@ -143,11 +158,175 @@ class MainActivity : ComponentActivity() {
  * (um painel, vários, um grupo ou o USB) se escolhe no momento de publicar, sem
  * o usuário ter que salvar um álbum, trocar de tela e reencontrá-lo lá.
  */
-private enum class Destino(val label: String, val icon: ImageVector) {
-    EDITAR("Editar", Icons.Filled.Edit),
-    PAINEIS("Painéis", Icons.Filled.Tv),
-    AGENDA("Agenda", Icons.Filled.CalendarMonth),
-    CONFIG("Config", Icons.Filled.Settings),
+private enum class Destino(val label: String, val hint: String, val icon: ImageVector) {
+    EDITAR("Editar", "Montar e publicar as telas", Icons.Filled.Edit),
+    PAINEIS("Painéis", "Encontrar e configurar", Icons.Filled.Tv),
+    AGENDA("Agenda", "Trocar sozinho por horário", Icons.Filled.CalendarMonth),
+    CONFIG("Config", "Tema, efeitos e sobre", Icons.Filled.Settings),
+}
+
+/** Cada destino tem um tom — o mesmo que os cartões daquela tela usam. */
+private val Destino.accent: Color
+    @Composable get() = when (this) {
+        Destino.EDITAR -> Accent.Blue
+        Destino.PAINEIS -> Accent.Teal
+        Destino.AGENDA -> Accent.Lilac
+        Destino.CONFIG -> Accent.Amber
+    }
+
+/**
+ * A gaveta, no mesmo idioma do resto do app.
+ *
+ * Antes ela era a única superfície que não tinha recebido nada do sistema: fundo
+ * chapado, ícones cinzas, o logo como um adesivo branco de canto duro, e dois
+ * terços de vazio embaixo. Agora tem a mesma aurora ao fundo, o mesmo quadradinho
+ * de ícone colorido dos cartões, o mesmo canto superelíptico, a mesma física de
+ * toque — e o vazio virou **rodapé de estado**, que responde "o app está vendo meu
+ * painel?" sem precisar navegar até Painéis.
+ */
+@Composable
+private fun GavetaLedBlock(
+    destinos: List<Destino>,
+    atual: Int,
+    wifiPhase: LinkPhase,
+    usbPhase: LinkPhase,
+    paineis: Int,
+    onEscolher: (Int) -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    ModalDrawerSheet(
+        drawerContainerColor = cs.surface,
+        // Só os cantos de fora arredondam — a gaveta encosta na borda esquerda.
+        // Retângulo arredondado, e não squircle: a gaveta é a maior superfície do
+        // app, e recorte por Path genérico numa área dessas é o mais caro que
+        // existe na renderização por software. Num canto de 30 dp que aparece só
+        // durante o deslize, ninguém enxerga a diferença.
+        drawerShape = RoundedCornerShape(topEnd = 30.dp, bottomEnd = 30.dp),
+    ) {
+        Column(Modifier.padding(horizontal = 14.dp)) {
+            // --- Marca ---
+            Row(
+                Modifier.padding(start = 6.dp, top = 22.dp, bottom = 18.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier
+                        .clip(SquircleChip)
+                        .background(Color.White)
+                        .border(1.dp, Accent.Blue.copy(alpha = 0.35f), SquircleChip)
+                        .padding(horizontal = 11.dp, vertical = 7.dp),
+                ) {
+                    Image(
+                        painterResource(R.drawable.logo_ledblock_trim), "LedBlock",
+                        Modifier.height(22.dp), contentScale = ContentScale.Fit,
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    "Painel\nde Ofertas",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = cs.onSurfaceVariant,
+                    lineHeight = 14.sp,
+                )
+            }
+
+            SoftDivider()
+            Spacer(Modifier.height(14.dp))
+
+            destinos.forEachIndexed { index, d ->
+                ItemGaveta(d, selecionado = atual == index) { onEscolher(index) }
+                Spacer(Modifier.height(6.dp))
+            }
+
+            Spacer(Modifier.height(22.dp))
+            SoftDivider()
+            Column(
+                Modifier.padding(start = 8.dp, top = 14.dp, bottom = 22.dp),
+                verticalArrangement = Arrangement.spacedBy(7.dp),
+            ) {
+                LinhaEstado(
+                    wifiPhase,
+                    Icons.Filled.Wifi,
+                    when {
+                        wifiPhase == LinkPhase.SEARCHING -> "Procurando na rede…"
+                        paineis == 1 -> "1 painel na rede"
+                        paineis > 1 -> "$paineis painéis na rede"
+                        else -> "Nenhum painel encontrado"
+                    },
+                )
+                LinhaEstado(
+                    usbPhase,
+                    Icons.Filled.Usb,
+                    if (usbPhase == LinkPhase.OFFLINE) "Nenhum cabo USB" else "Painel por cabo USB",
+                )
+                MonoText("v${BuildConfig.VERSION_NAME}", size = 10)
+            }
+        }
+    }
+}
+
+/**
+ * Item da gaveta. O selecionado ganha o **banho de cor do próprio destino** e o
+ * contorno que respira — a mesma gramática dos cartões, então a gaveta deixa de
+ * parecer peça de outro app.
+ */
+@Composable
+private fun ItemGaveta(d: Destino, selecionado: Boolean, onClick: () -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    val tom = d.accent
+    val forma = RoundedCornerShape(20.dp)
+    val press = remember { MutableInteractionSource() }
+    val fundo by animateColorAsState(
+        if (selecionado) lerp(cs.surfaceContainerHigh, tom, 0.22f) else Color.Transparent,
+        Motion.gentle(), label = "itemBg",
+    )
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .pressBounce(press)
+            .clip(forma)
+            .background(fundo)
+            .then(if (selecionado) Modifier.breathingBorder(tom, forma) else Modifier)
+            .clickable(interactionSource = press, indication = null, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(13.dp),
+    ) {
+        // Mesmo quadradinho tingido dos cabeçalhos de cartão.
+        Box(
+            Modifier.size(38.dp).clip(SquircleChip)
+                .background(tom.copy(alpha = if (selecionado) 0.28f else 0.14f))
+                .border(1.dp, tom.copy(alpha = if (selecionado) 0.5f else 0.22f), SquircleChip),
+            contentAlignment = Alignment.Center,
+        ) { Icon(d.icon, null, tint = tom, modifier = Modifier.size(20.dp)) }
+
+        Column(Modifier.weight(1f)) {
+            Text(
+                d.label,
+                style = MaterialTheme.typography.titleSmall,
+                color = if (selecionado) cs.onSurface else cs.onSurfaceVariant,
+            )
+            Text(d.hint, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+        }
+    }
+}
+
+/** Linha do rodapé: bolinha de fase + ícone + texto, igual às pílulas do topo. */
+@Composable
+private fun LinhaEstado(phase: LinkPhase, icon: ImageVector, texto: String) {
+    val cs = MaterialTheme.colorScheme
+    val cor = when (phase) {
+        LinkPhase.ONLINE -> Accent.Green
+        LinkPhase.SEARCHING -> Accent.Amber
+        LinkPhase.TRANSFER -> Accent.Blue
+        LinkPhase.ERROR -> Accent.Rose
+        LinkPhase.OFFLINE -> cs.outline
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.size(7.dp).clip(CircleShape).background(cor))
+        Icon(icon, null, Modifier.size(14.dp), tint = cs.onSurfaceVariant)
+        Text(texto, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+    }
 }
 
 /**
@@ -234,45 +413,17 @@ fun PainelOfertasApp() {
             // para poder fechá-la arrastando. Abrir continua no botão sanduíche.
             gesturesEnabled = drawerState.isOpen,
             drawerContent = {
-                ModalDrawerSheet(drawerContainerColor = MaterialTheme.colorScheme.surface) {
-                    Column(Modifier.fillMaxWidth().padding(20.dp)) {
-                        Box(
-                            Modifier.background(Color.White, RoundedCornerShape(10.dp)).padding(horizontal = 12.dp, vertical = 8.dp),
-                        ) {
-                            Image(
-                                painterResource(R.drawable.logo_ledblock_trim), "LedBlock",
-                                Modifier.height(26.dp), contentScale = ContentScale.Fit,
-                            )
-                        }
-                        Text(
-                            "Painel de Ofertas",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 10.dp, start = 2.dp),
-                        )
-                    }
-                    SoftDivider()
-                    Spacer(Modifier.height(8.dp))
-                    // Cada item entra um pouco depois do anterior: a gaveta se
-                    // desdobra em vez de aparecer inteira.
-                    destinos.forEachIndexed { index, d ->
-                        Appear(delayMillis = 40 + index * 45) {
-                            NavigationDrawerItem(
-                                icon = { Icon(d.icon, null) },
-                                label = { Text(d.label) },
-                                selected = atual == index,
-                                shape = ButtonShape,
-                                onClick = { nav.selectedTab = index; drawerScope.launch { drawerState.close() } },
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
-                                colors = NavigationDrawerItemDefaults.colors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                    selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    selectedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                ),
-                            )
-                        }
-                    }
-                }
+                GavetaLedBlock(
+                    destinos = destinos,
+                    atual = atual,
+                    wifiPhase = wifiPhase,
+                    usbPhase = usbPhase,
+                    paineis = container.panels.panels.collectAsState().value.size,
+                    onEscolher = { i ->
+                        nav.selectedTab = i
+                        drawerScope.launch { drawerState.close() }
+                    },
+                )
             },
         ) {
             Scaffold(

@@ -70,6 +70,33 @@ class SquircleShape(
     }
 
     override fun toString() = "SquircleShape(n=$n)"
+
+    /**
+     * **Obrigatório**, e não detalhe de estilo.
+     *
+     * O Compose decide se um modificador mudou comparando seus parâmetros. Sem
+     * `equals`, cada recomposição cria uma instância diferente desta forma, todo
+     * `clip`/`border` que a recebe se considera alterado e **invalida o desenho** —
+     * o que, para um `Outline.Generic`, significa reconstruir o `Path` de ~60
+     * pontos. Espalhado por dezenas de elementos, isso saturava a *RenderThread* a
+     * ponto de o Android acusar ANR. `RoundedCornerShape` implementa `equals`
+     * exatamente por isso.
+     */
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is SquircleShape) return false
+        return topStart == other.topStart && topEnd == other.topEnd &&
+            bottomEnd == other.bottomEnd && bottomStart == other.bottomStart && n == other.n
+    }
+
+    override fun hashCode(): Int {
+        var r = topStart.hashCode()
+        r = 31 * r + topEnd.hashCode()
+        r = 31 * r + bottomEnd.hashCode()
+        r = 31 * r + bottomStart.hashCode()
+        r = 31 * r + n.hashCode()
+        return r
+    }
 }
 
 private const val SEGMENTS = 14
@@ -120,6 +147,12 @@ private fun squirclePath(
 }
 
 // ===== Escala de formas do app =====
+// Instâncias de topo: além de não alocar a cada recomposição, garantem que o
+// mesmo canto seja literalmente o mesmo objeto em todo o app.
+val SquircleChip = SquircleShape(13.dp)
+val SquircleTile = SquircleShape(18.dp)
+val SquircleTab = SquircleShape(17.dp)
+val SquircleBezel = SquircleShape(24.dp)
 val SquircleSmall = SquircleShape(14.dp)
 val SquircleMedium = SquircleShape(22.dp)
 val SquircleLarge = SquircleShape(28.dp)
