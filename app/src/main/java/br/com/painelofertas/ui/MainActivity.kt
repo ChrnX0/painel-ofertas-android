@@ -21,11 +21,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -63,8 +68,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -87,6 +96,7 @@ import br.com.painelofertas.ui.screens.EditarScreen
 import br.com.painelofertas.ui.screens.PaineisScreen
 import br.com.painelofertas.ui.theme.PainelOfertasTheme
 import br.com.painelofertas.ui.vm.AppViewModel
+import kotlin.math.absoluteValue
 import kotlinx.coroutines.launch
 
 /** Aviso da última leitura NFC — a UI mostra e limpa. */
@@ -140,6 +150,40 @@ private enum class Destino(val label: String, val icon: ImageVector) {
     CONFIG("Config", Icons.Filled.Settings),
 }
 
+/**
+ * Trilho fino de posição sob a barra superior.
+ *
+ * Sem a barra de abas de antes, o gesto de arrastar seria invisível — este trilho
+ * é a única pista de que existem outras telas ao lado. O cursor lê
+ * `currentPage + currentPageOffsetFraction`, ou seja, a posição **contínua** do
+ * pager: ele acompanha o dedo durante o arraste, em vez de pular quando a página
+ * troca. É essa continuidade que faz o gesto parecer que move a interface, e não
+ * que dispara uma animação.
+ */
+@Composable
+private fun PageRail(pager: PagerState, total: Int) {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp).height(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        repeat(total) { i ->
+            // Distância contínua até esta posição: 0 = bem em cima, 1 = longe.
+            val d = ((pager.currentPage - i) + pager.currentPageOffsetFraction)
+                .absoluteValue.coerceIn(0f, 1f)
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clip(CircleShape)
+                    .drawBehind {
+                        drawRect(lerp(cs.outlineVariant, cs.primary, 1f - d))
+                    },
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PainelOfertasApp() {
@@ -152,6 +196,19 @@ fun PainelOfertasApp() {
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val drawerScope = rememberCoroutineScope()
+
+    // Arrastar para o lado troca de tela. O pager e a gaveta são duas fontes da
+    // mesma verdade, então sincronizamos os dois sentidos — sempre comparando
+    // antes de agir, senão um dispara o outro em laço.
+    val pager = rememberPagerState(initialPage = atual) { destinos.size }
+    LaunchedEffect(nav.selectedTab) {
+        if (pager.currentPage != nav.selectedTab) pager.animateScrollToPage(nav.selectedTab)
+    }
+    LaunchedEffect(pager.settledPage) {
+        // settledPage (e não currentPage) para o menu só marcar a tela quando o
+        // dedo solta e o pager assenta — no meio do arraste ainda dá para voltar.
+        if (nav.selectedTab != pager.settledPage) nav.selectedTab = pager.settledPage
+    }
 
     // Voltar: fecha a gaveta se aberta; senão volta pra 1ª tela.
     BackHandler(enabled = drawerState.isOpen || atual != 0) {
@@ -172,6 +229,10 @@ fun PainelOfertasApp() {
     CompositionLocalProvider(LocalSnackbar provides snackbar) {
         ModalNavigationDrawer(
             drawerState = drawerState,
+            // Fechada, a gaveta abre mão do gesto: ela captura arrasto horizontal em
+            // toda a área de conteúdo e engoliria o do pager. Aberta, o gesto volta,
+            // para poder fechá-la arrastando. Abrir continua no botão sanduíche.
+            gesturesEnabled = drawerState.isOpen,
             drawerContent = {
                 ModalDrawerSheet(drawerContainerColor = MaterialTheme.colorScheme.surface) {
                     Column(Modifier.fillMaxWidth().padding(20.dp)) {
@@ -265,23 +326,42 @@ fun PainelOfertasApp() {
                         colors = listOf(Accent.Sky, Accent.Lilac, Accent.Teal),
                     )
 
-                    AnimatedContent(
-                        targetState = atual,
-                        transitionSpec = {
-                            // Troca de tela com mola: desliza e assenta, sem corte seco.
-                            val dir = if (targetState > initialState) 1 else -1
-                            (fadeIn(tween(260)) + slideInHorizontally(Motion.gentle()) { w -> dir * w / 8 }) togetherWith
-                                (fadeOut(tween(160)) + slideOutHorizontally(Motion.gentle()) { w -> -dir * w / 8 })
-                        },
-                        modifier = Modifier.align(Alignment.TopCenter).widthIn(max = 700.dp).fillMaxSize(),
-                        label = "screen",
-                    ) { idx ->
-                        when (destinos[idx]) {
-                            Destino.EDITAR -> EditarScreen()
-                            Destino.PAINEIS -> PaineisScreen()
-                            Destino.AGENDA -> AgendaScreen()
-                            Destino.CONFIG -> ConfigScreen()
-                        }
+                    Column(Modifier.align(Alignment.TopCenter).widthIn(max = 700.dp).fillMaxSize()) {
+                        // Trilho de posição: mostra onde você está e, principalmente,
+                        // **revela que dá para arrastar**. Sem a barra de abas embaixo,
+                        // o gesto seria invisível.
+                        PageRail(pager, destinos.size)
+
+                        HorizontalPager(
+                            state = pager,
+                            modifier = Modifier.fillMaxSize(),
+                            // Só a página atual fica composta: as telas são pesadas
+                            // (o editor desenha milhares de LEDs) e manter vizinhas
+                            // vivas custaria caro por nada.
+                            beyondViewportPageCount = 0,
+                            pageContent = { idx ->
+                                // Profundidade no arraste: a página que sai encolhe e
+                                // esmaece, a que entra cresce até o lugar. O movimento
+                                // acompanha o dedo em vez de tocar depois dele.
+                                val dist = ((pager.currentPage - idx) + pager.currentPageOffsetFraction)
+                                    .absoluteValue.coerceIn(0f, 1f)
+                                Box(
+                                    Modifier.fillMaxSize().graphicsLayer {
+                                        val e = 1f - dist
+                                        scaleX = 0.88f + 0.12f * e
+                                        scaleY = 0.88f + 0.12f * e
+                                        alpha = 0.35f + 0.65f * e
+                                    },
+                                ) {
+                                    when (destinos[idx]) {
+                                        Destino.EDITAR -> EditarScreen()
+                                        Destino.PAINEIS -> PaineisScreen()
+                                        Destino.AGENDA -> AgendaScreen()
+                                        Destino.CONFIG -> ConfigScreen()
+                                    }
+                                }
+                            },
+                        )
                     }
                 }
             }

@@ -8,6 +8,31 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.45.0] — 2026-08-30 · `versionCode 47`
+
+### Adicionado — trocar de tela arrastando
+- As quatro telas viraram um **`HorizontalPager`**: arraste para o lado e a
+  interface acompanha o dedo, em vez de uma animação disparar depois do toque
+- **Profundidade no arraste**: a página que sai encolhe para 88% e esmaece, a que
+  entra cresce até o lugar — dá camadas ao movimento em vez de dois retângulos
+  trocando de posição
+- **Trilho de posição** sob a barra superior. Sem a barra de abas de antes, o
+  gesto seria invisível; o trilho é a pista de que há telas ao lado. O cursor lê a
+  posição **contínua** do pager (`currentPage + currentPageOffsetFraction`), então
+  desliza junto com o dedo em vez de pular quando a página troca
+- O menu só marca a tela quando o pager **assenta** (`settledPage`): no meio do
+  arraste ainda dá para voltar atrás sem que a seleção pisque
+
+### Corrigido — conflito de gestos com a gaveta
+- `ModalNavigationDrawer` captura arrasto horizontal em **toda a área de
+  conteúdo**, não só na borda: com o pager, os dois gestos brigavam e a gaveta
+  vencia sempre. Agora ela abre mão do gesto enquanto está fechada
+  (`gesturesEnabled = drawerState.isOpen`) — abrir é pelo botão sanduíche, e
+  arrastar para fechar continua funcionando
+- `beyondViewportPageCount = 0`: só a tela atual fica composta. As telas são
+  pesadas (o editor desenha milhares de LEDs) e manter as vizinhas vivas custaria
+  caro por nada — o trabalho em andamento não se perde porque vive no ViewModel
+
 ## [0.44.0] — 2026-08-30 · `versionCode 46`
 
 ### Adicionado — o app respira
