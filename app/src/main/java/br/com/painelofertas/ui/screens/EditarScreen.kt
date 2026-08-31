@@ -2,8 +2,17 @@ package br.com.painelofertas.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -14,6 +23,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,6 +47,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -126,14 +137,18 @@ import br.com.painelofertas.ui.components.OnAccent
 import br.com.painelofertas.ui.components.OnboardingCard
 import br.com.painelofertas.ui.components.accentBorder
 import br.com.painelofertas.ui.components.accentCardColors
+import br.com.painelofertas.ui.components.Motion
+import br.com.painelofertas.ui.components.pressBounce
 import br.com.painelofertas.ui.components.MonoText
 import br.com.painelofertas.ui.components.OptionTile
 import br.com.painelofertas.ui.components.PanelShape
 import br.com.painelofertas.ui.components.PanelPreview
 import br.com.painelofertas.ui.components.SectionLabel
+import br.com.painelofertas.ui.components.SoftDivider
 import br.com.painelofertas.ui.components.SegChoice
 import br.com.painelofertas.ui.LocalSnackbar
 import br.com.painelofertas.ui.rememberContainer
+import br.com.painelofertas.ui.theme.SquircleShape
 import br.com.painelofertas.ui.theme.ledColorAt
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -445,30 +460,39 @@ fun EditarScreen() {
                 OnboardingCard(onDismiss = { showGuide = false; container.settings.onboardingDone = true })
             }
 
-            // Um lugar só para "como esta tela é", na ordem em que se pensa:
-            // formato do painel → tamanho da tela → o que ela mostra → entra ou não.
-            SetupCard(vm, cur)
-
-            when (val d = cur) {
-                is FrameDraft.Msg -> MsgForm(d) { vm.replaceSel(it) }
-                is FrameDraft.Ofe -> OfeForm(d) { vm.replaceSel(it) }
-                is FrameDraft.Raw -> Text(
-                    "Tela salva — prévia e reordenação disponíveis. Para editar campo-a-campo, crie uma nova tela.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                null -> {}
+            // Entrada em cascata: cada bloco sobe e assenta um pouco depois do
+            // anterior. A tela se monta diante do usuário em vez de aparecer pronta.
+            Appear(delayMillis = 40) {
+                // Um lugar só para "como esta tela é", na ordem em que se pensa:
+                // formato do painel → tamanho da tela → o que ela mostra → entra ou não.
+                SetupCard(vm, cur)
             }
 
-            SequenciaCard(vm, editScope, snackbar)
+            Appear(delayMillis = 90) {
+                when (val d = cur) {
+                    is FrameDraft.Msg -> MsgForm(d) { vm.replaceSel(it) }
+                    is FrameDraft.Ofe -> OfeForm(d) { vm.replaceSel(it) }
+                    is FrameDraft.Raw -> Text(
+                        "Tela salva — prévia e reordenação disponíveis. Para editar campo-a-campo, crie uma nova tela.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    null -> {}
+                }
+            }
 
-            PainelCard(
-                temPainel = temPainel,
-                busy = panelBusy,
-                onSincronizar = { sincronizar() },
-                onLimpar = { confirmClear = true },
-            )
+            Appear(delayMillis = 140) { SequenciaCard(vm, editScope, snackbar) }
+
+            Appear(delayMillis = 190) {
+                PainelCard(
+                    temPainel = temPainel,
+                    busy = panelBusy,
+                    onSincronizar = { sincronizar() },
+                    onLimpar = { confirmClear = true },
+                )
+            }
 
             // ===== ÁLBUM =====
+            Appear(delayMillis = 240) {
             Card(Modifier.fillMaxWidth(), colors = accentCardColors(Accent.Blue), border = accentBorder(Accent.Blue)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
@@ -535,6 +559,7 @@ fun EditarScreen() {
                         }
                     }
                 }
+            }
             }
 
             if (msg.isNotBlank()) {
@@ -776,7 +801,7 @@ private fun SetupCard(vm: EditorViewModel, cur: FrameDraft?) {
             }
 
             if (editavel) {
-                HorizontalDivider(color = cs.outlineVariant)
+                SoftDivider(accent = Accent.Teal)
 
                 // --- 2. Tamanho desta tela ---
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -795,7 +820,7 @@ private fun SetupCard(vm: EditorViewModel, cur: FrameDraft?) {
                     }
                 }
 
-                HorizontalDivider(color = cs.outlineVariant)
+                SoftDivider(accent = Accent.Amber)
 
                 // --- 3. Conteúdo ---
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -814,7 +839,7 @@ private fun SetupCard(vm: EditorViewModel, cur: FrameDraft?) {
                     }
                 }
 
-                HorizontalDivider(color = cs.outlineVariant)
+                SoftDivider(accent = Accent.Green)
 
                 // --- 4. O liga/desliga de verdade ---
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -896,18 +921,58 @@ private fun PublishBar(
                     }
                 }
 
+                // O botão principal **respira** enquanto está pronto: um pulso lento,
+                // quase imperceptível, que diz "estou vivo, é aqui". Some no instante
+                // em que o envio começa — respirar durante o trabalho seria ruído.
+                val pronto = destino != null && state == EditorViewModel.PubState.IDLE
+                val respiro = rememberInfiniteTransition(label = "publicar")
+                val pulso by respiro.animateFloat(
+                    initialValue = 1f,
+                    targetValue = 1.035f,
+                    animationSpec = infiniteRepeatable(tween(1700, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+                    label = "pulso",
+                )
+                val escalaOk by animateFloatAsState(
+                    if (state == EditorViewModel.PubState.DONE) 1.06f else 1f,
+                    Motion.springy(), label = "publicarOk",
+                )
+                val press = remember { MutableInteractionSource() }
                 Button(
                     onClick = onPublicar,
                     enabled = destino != null && state != EditorViewModel.PubState.WORKING,
                     shape = ButtonShape,
-                    modifier = Modifier.height(50.dp).semantics { contentDescription = "Publicar no painel" },
+                    interactionSource = press,
+                    modifier = Modifier
+                        .graphicsLayer {
+                            val s = (if (pronto) pulso else 1f) * escalaOk
+                            scaleX = s; scaleY = s
+                        }
+                        .pressBounce(press, scaleDown = 0.94f)
+                        .height(50.dp)
+                        .semantics { contentDescription = "Publicar no painel" },
                 ) {
-                    if (state == EditorViewModel.PubState.WORKING) {
-                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = cs.onPrimary)
-                    } else {
-                        Icon(Icons.AutoMirrored.Filled.Send, null, Modifier.size(19.dp))
-                        Spacer(Modifier.size(8.dp))
-                        Text("Publicar", style = MaterialTheme.typography.titleSmall)
+                    AnimatedContent(
+                        targetState = state,
+                        transitionSpec = {
+                            (fadeIn(Motion.gentle()) + scaleIn(Motion.bouncy(), initialScale = 0.7f)) togetherWith
+                                (fadeOut(tween(120)) + scaleOut(Motion.gentle(), targetScale = 0.7f))
+                        },
+                        label = "publicarConteudo",
+                    ) { st ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            when (st) {
+                                EditorViewModel.PubState.WORKING ->
+                                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = cs.onPrimary)
+                                EditorViewModel.PubState.DONE -> {
+                                    Icon(Icons.Filled.Check, null, Modifier.size(20.dp))
+                                    Spacer(Modifier.size(8.dp)); Text("No ar", style = MaterialTheme.typography.titleSmall)
+                                }
+                                else -> {
+                                    Icon(Icons.AutoMirrored.Filled.Send, null, Modifier.size(19.dp))
+                                    Spacer(Modifier.size(8.dp)); Text("Publicar", style = MaterialTheme.typography.titleSmall)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -915,21 +980,35 @@ private fun PublishBar(
     }
 }
 
-/** Fileira de telas numeradas (One UI) + botão "+". Desliza na horizontal. */
+/**
+ * Fileira de telas numeradas + botão "+". A selecionada **se alarga** e cresce
+ * com mola, em vez de só trocar de cor: o dedo sente qual está ativa mesmo de
+ * relance, e a mudança tem direção — parece que a pastilha se move, não que duas
+ * piscaram. Desliza na horizontal.
+ */
 @Composable
 private fun ScreensBar(vm: EditorViewModel, onAdd: () -> Unit) {
     val cs = MaterialTheme.colorScheme
+    val forma = SquircleShape(17.dp)
     Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         vm.frames.forEachIndexed { i, d ->
             val selected = i == vm.sel
+            val press = remember { MutableInteractionSource() }
+            val largura by animateDpAsState(if (selected) 62.dp else 48.dp, Motion.bouncy(), label = "tabW")
+            val cor by animateColorAsState(
+                if (selected) cs.primary else cs.surfaceContainerHigh,
+                Motion.gentle(), label = "tabColor",
+            )
             Box(
-                Modifier.size(48.dp).clip(RoundedCornerShape(15.dp))
-                    .background(if (selected) cs.primary else cs.surfaceContainerHigh)
-                    .clickable { vm.selected = i }
+                Modifier.width(largura).height(48.dp)
+                    .pressBounce(press)
+                    .clip(forma)
+                    .background(cor)
+                    .clickable(interactionSource = press, indication = null) { vm.selected = i }
                     .semantics { contentDescription = "Tela ${i + 1}: ${d.display()}" + if (selected) ", selecionada" else "" },
                 contentAlignment = Alignment.Center,
             ) {
@@ -941,8 +1020,13 @@ private fun ScreensBar(vm: EditorViewModel, onAdd: () -> Unit) {
                 )
             }
         }
+        val pressAdd = remember { MutableInteractionSource() }
         Box(
-            Modifier.size(48.dp).clip(RoundedCornerShape(15.dp)).background(cs.surfaceContainerHigh).clickable { onAdd() },
+            Modifier.size(48.dp)
+                .pressBounce(pressAdd)
+                .clip(forma)
+                .background(cs.surfaceContainerHigh)
+                .clickable(interactionSource = pressAdd, indication = null) { onAdd() },
             contentAlignment = Alignment.Center,
         ) { Icon(Icons.Filled.Add, "Adicionar nova tela", tint = cs.primary) }
     }

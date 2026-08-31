@@ -73,6 +73,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import br.com.painelofertas.PainelApp
 import br.com.painelofertas.R
 import br.com.painelofertas.nfc.NfcReader
+import br.com.painelofertas.ui.components.Accent
+import br.com.painelofertas.ui.components.AuroraBackground
+import br.com.painelofertas.ui.components.Motion
+import br.com.painelofertas.ui.components.Appear
+import br.com.painelofertas.ui.components.ButtonShape
+import br.com.painelofertas.ui.components.SoftDivider
 import br.com.painelofertas.ui.components.StatusPill
 import br.com.painelofertas.ui.screens.AgendaScreen
 import br.com.painelofertas.ui.screens.ConfigScreen
@@ -182,21 +188,26 @@ fun PainelOfertasApp() {
                             modifier = Modifier.padding(top = 10.dp, start = 2.dp),
                         )
                     }
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    SoftDivider()
                     Spacer(Modifier.height(8.dp))
+                    // Cada item entra um pouco depois do anterior: a gaveta se
+                    // desdobra em vez de aparecer inteira.
                     destinos.forEachIndexed { index, d ->
-                        NavigationDrawerItem(
-                            icon = { Icon(d.icon, null) },
-                            label = { Text(d.label) },
-                            selected = atual == index,
-                            onClick = { nav.selectedTab = index; drawerScope.launch { drawerState.close() } },
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
-                            colors = NavigationDrawerItemDefaults.colors(
-                                selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                selectedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            ),
-                        )
+                        Appear(delayMillis = 40 + index * 45) {
+                            NavigationDrawerItem(
+                                icon = { Icon(d.icon, null) },
+                                label = { Text(d.label) },
+                                selected = atual == index,
+                                shape = ButtonShape,
+                                onClick = { nav.selectedTab = index; drawerScope.launch { drawerState.close() } },
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
+                                colors = NavigationDrawerItemDefaults.colors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    selectedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                ),
+                            )
+                        }
                     }
                 }
             },
@@ -243,22 +254,22 @@ fun PainelOfertasApp() {
                     Modifier
                         .fillMaxSize()
                         .padding(innerPadding)
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.055f),
-                                    MaterialTheme.colorScheme.background,
-                                    MaterialTheme.colorScheme.background,
-                                ),
-                            ),
-                        ),
+                        .background(MaterialTheme.colorScheme.background),
                 ) {
+                    // Fundo vivo: manchas pastéis derivando devagar. Fica atrás de
+                    // tudo e é sentido mais do que visto.
+                    AuroraBackground(
+                        Modifier.matchParentSize(),
+                        colors = listOf(Accent.Sky, Accent.Lilac, Accent.Teal),
+                    )
+
                     AnimatedContent(
                         targetState = atual,
                         transitionSpec = {
+                            // Troca de tela com mola: desliza e assenta, sem corte seco.
                             val dir = if (targetState > initialState) 1 else -1
-                            (fadeIn(tween(280)) + slideInHorizontally(tween(340)) { w -> dir * w / 10 }) togetherWith
-                                (fadeOut(tween(180)) + slideOutHorizontally(tween(340)) { w -> -dir * w / 10 })
+                            (fadeIn(tween(260)) + slideInHorizontally(Motion.gentle()) { w -> dir * w / 8 }) togetherWith
+                                (fadeOut(tween(160)) + slideOutHorizontally(Motion.gentle()) { w -> -dir * w / 8 })
                         },
                         modifier = Modifier.align(Alignment.TopCenter).widthIn(max = 700.dp).fillMaxSize(),
                         label = "screen",

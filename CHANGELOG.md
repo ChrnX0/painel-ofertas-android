@@ -8,6 +8,66 @@ Todas as mudanças relevantes do projeto. Formato baseado em
 
 ---
 
+## [0.43.0] — 2026-08-30 · `versionCode 45`
+
+Um **sistema** de design orgânico, não efeitos avulsos: forma, movimento e cor
+passam a ter vocabulário próprio, e o app inteiro fala essa língua.
+
+### Adicionado — forma
+- **Canto superelíptico (squircle)** em cartões, folhas, botões e pastilhas
+  (`theme/Squircle.kt`). Um `RoundedCornerShape` é um arco de círculo colado numa
+  reta: na emenda a curvatura salta de zero ao máximo e o olho lê "dois pedaços
+  grudados". A superelipse `|x/r|ⁿ+|y/r|ⁿ=1` (n≈4,5) espalha a curvatura pelo
+  canto inteiro — é a forma do One UI
+- Herda de `CornerBasedShape` (não do `Shape` cru) porque é o que o Material
+  exige em `MaterialTheme.shapes`: componentes **adaptam** a forma recebida — a
+  folha inferior pega `shapes.large` e zera os cantos de baixo
+- Cantos pequenos (8/12 dp) seguem em arco de círculo de propósito: ninguém
+  enxerga a diferença, e o recorte usa o caminho rápido
+- **`SoftDivider`**: traço que nasce e morre em transparente. Separa sem fatiar
+
+### Adicionado — movimento
+- **Vocabulário de molas** (`Motion.gentle/bouncy/snappy/springy`) no lugar de
+  curvas de tempo. Mola tem massa e atrito: acelera, passa um pouco do ponto e
+  assenta. Também é interrompível — tocar de novo no meio muda o destino a partir
+  da **velocidade atual**, sem corte
+- **`Modifier.pressBounce`**: o elemento encolhe sob o dedo e volta com mola. É a
+  interação mais barata que existe e a que mais muda a percepção — deixa de ser
+  desenho e passa a ceder ao toque
+- Pastilha da tela selecionada **se alarga** (48→62 dp) em vez de só trocar de
+  cor: a mudança ganha direção
+- Botão **Publicar respira** enquanto está pronto (pulso de 1,7 s, some no
+  instante em que o envio começa) e **transforma o conteúdo** entre Publicar →
+  progresso → "No ar"
+- Marca de seleção dos botões de escolha entra girando/crescendo
+- Entrada em cascata (`Appear`) no editor e na gaveta: a tela se monta
+- Troca de tela e de conteúdo com mola, não com `tween`
+
+### Adicionado — fundo vivo
+- **`AuroraBackground`**: três manchas pastel derivando atrás de tudo, em
+  trajetórias de Lissajous com períodos **primos entre si** (29/37/43 s) — a
+  combinação não se repete de forma perceptível, então não parece um GIF em laço
+- Duas otimizações necessárias, ambas medidas no emulador (renderização por
+  software): (1) o gradiente é rasterizado **uma vez** num bitmap de 96², e cada
+  quadro faz só *blits* ampliados — a versão ingênua, com `radialGradient` por
+  quadro, causava **ANR**; (2) redesenho a **4 fps** em vez de 60 — a taxa de uma
+  animação deve casar com a velocidade do conteúdo, não com a do monitor: uma
+  mancha que leva 29 s para dar a volta anda 1 px por quadro a 60 fps
+- Custo final medido: **+16 pontos de CPU** sobre a base (97% → 113%), incluindo
+  squircles e todas as animações novas
+
+### Alterado — cor pastel nos DOIS temas
+- **`AccentPalette` por tema** (`theme/Accents.kt`): o mesmo pastel não serve aos
+  dois. `#8AB4F8` brilha sobre carvão e **some sobre branco** (contraste ~1,8:1).
+  O tema claro usa o **mesmo matiz**, ~35% mais fundo — macio, porém legível
+- `Accent.Blue` e companhia agora leem `LocalAccents`, então os **78 usos** se
+  adaptam sozinhos: um nome por cor, sem variantes espalhadas pelo código
+- `OnAccent` idem: quase-preto sobre acento claro (escuro), branco sobre acento
+  fundo (claro) — sem isso, botão pastel no tema claro ficava ilegível
+- Tema claro repintado em pastel: primário `#4A76C4` no lugar do `#1565C0`
+  saturado, contêineres lavados, e **nenhuma superfície em branco 100%** — branco
+  puro faz qualquer pastel ao lado parecer sujo
+
 ## [0.42.0] — 2026-08-30 · `versionCode 44`
 
 Duas frentes: **menos telas para o mesmo trabalho** e **cor de verdade** no tema.

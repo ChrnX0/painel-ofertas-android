@@ -8,18 +8,23 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 
-/** Cantos generosos, estilo OneUI (cards/sheets bem arredondados). */
+/**
+ * Cantos **superelípticos** (squircle) do One UI. Os tamanhos pequenos ficam em
+ * arco de círculo de propósito: num canto de 8 dp ninguém enxerga a diferença, e
+ * `RoundedCornerShape` recorta por caminho rápido, sem `Path` genérico.
+ */
 private val AppShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
     small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(20.dp),
-    large = RoundedCornerShape(26.dp),
-    extraLarge = RoundedCornerShape(32.dp),
+    medium = SquircleMedium,
+    large = SquircleLarge,
+    extraLarge = SquircleXLarge,
 )
 
 private val DarkColors = darkColorScheme(
@@ -108,10 +113,16 @@ fun PainelOfertasTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colors,
-        typography = AppTypography,
-        shapes = AppShapes,
-        content = content,
-    )
+    // Os acentos acompanham o tema: mesmo matiz, brilho ajustado ao fundo.
+    CompositionLocalProvider(
+        LocalAccents provides if (darkTheme) AccentsDark else AccentsLight,
+        LocalIsLight provides !darkTheme,
+    ) {
+        MaterialTheme(
+            colorScheme = colors,
+            typography = AppTypography,
+            shapes = AppShapes,
+            content = content,
+        )
+    }
 }

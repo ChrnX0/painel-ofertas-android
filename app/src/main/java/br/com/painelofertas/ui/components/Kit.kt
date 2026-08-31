@@ -1,5 +1,16 @@
 package br.com.painelofertas.ui.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.graphicsLayer
+import br.com.painelofertas.ui.theme.SquircleShape
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -39,6 +50,7 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,31 +66,42 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.painelofertas.net.LinkPhase
 import br.com.painelofertas.ui.theme.Archivo
+import br.com.painelofertas.ui.theme.LocalAccents
+import br.com.painelofertas.ui.theme.LocalIsLight
 import br.com.painelofertas.ui.theme.Mono
 import br.com.painelofertas.ui.theme.PanelBg
+import br.com.painelofertas.ui.theme.SquircleMedium
+import br.com.painelofertas.ui.theme.SquirclePill
 
-/** Cantos dos botões principais — arredondados, estilo OneUI. */
-val ButtonShape = RoundedCornerShape(22.dp)
+/** Cantos dos botões principais — superelípticos, estilo One UI. */
+val ButtonShape = SquirclePill
 
 /**
- * Acentos **pastéis** — coloridos, porém suaves (nada gritante), legíveis nos dois
- * temas. Usados nos ícones dos cartões e nos chips de status para dar cor sem berrar.
+ * Acentos **pastéis** do app. Cada cor lê a paleta do tema atual
+ * ([LocalAccents]), então o mesmo `Accent.Blue` sai claro no tema escuro e mais
+ * fundo no claro — mesmo matiz, contraste sempre legível, sem dois nomes para a
+ * mesma cor espalhados pelo código.
  */
 object Accent {
-    val Blue = Color(0xFF8AB4F8)
-    val Green = Color(0xFF8FE0BF)
-    val Amber = Color(0xFFF3D08A)
-    val Lilac = Color(0xFFC3B0F5)
-    val Rose = Color(0xFFF2AEC6)
-    val Teal = Color(0xFF8FD9D2)
-    val Peach = Color(0xFFF6BFA0)
-    val Mint = Color(0xFFA8E6A3)
-    val Sky = Color(0xFF9BD5F0)
-    val Gray = Color(0xFF9AA6B6)
+    val Blue: Color @Composable @ReadOnlyComposable get() = LocalAccents.current.blue
+    val Green: Color @Composable @ReadOnlyComposable get() = LocalAccents.current.green
+    val Amber: Color @Composable @ReadOnlyComposable get() = LocalAccents.current.amber
+    val Lilac: Color @Composable @ReadOnlyComposable get() = LocalAccents.current.lilac
+    val Rose: Color @Composable @ReadOnlyComposable get() = LocalAccents.current.rose
+    val Teal: Color @Composable @ReadOnlyComposable get() = LocalAccents.current.teal
+    val Peach: Color @Composable @ReadOnlyComposable get() = LocalAccents.current.peach
+    val Mint: Color @Composable @ReadOnlyComposable get() = LocalAccents.current.mint
+    val Sky: Color @Composable @ReadOnlyComposable get() = LocalAccents.current.sky
+    val Gray: Color @Composable @ReadOnlyComposable get() = LocalAccents.current.gray
 }
 
-/** Texto/ícone escuro para uso SOBRE um preenchimento pastel (bom contraste). */
-val OnAccent = Color(0xFF0A0F16)
+/**
+ * Texto/ícone para uso SOBRE um preenchimento de acento. No escuro o acento é
+ * claro, então escreve-se em quase-preto; no claro o acento é fundo, e o texto
+ * vira branco. Sem isso, botão pastel no tema claro fica ilegível.
+ */
+val OnAccent: Color
+    @Composable @ReadOnlyComposable get() = if (LocalIsLight.current) Color.White else Color(0xFF0A0F16)
 
 /**
  * Cartão com um **banho leve** da cor de acento — dá cor à superfície inteira,
@@ -231,32 +254,46 @@ fun OptionTile(
     visual: @Composable () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
+    val forma = SquircleShape(18.dp)
     val bg by animateColorAsState(
-        if (selected) lerp(cs.surfaceContainerHigh, accent, 0.20f) else cs.surfaceContainerLow,
-        tween(220), label = "tileBg",
+        if (selected) lerp(cs.surfaceContainerHigh, accent, if (LocalIsLight.current) 0.16f else 0.22f)
+        else cs.surfaceContainerLow,
+        Motion.gentle(), label = "tileBg",
     )
     val edge by animateColorAsState(
         if (selected) accent.copy(alpha = 0.75f) else cs.outlineVariant,
-        tween(220), label = "tileEdge",
+        Motion.gentle(), label = "tileEdge",
     )
+    // Escolhido cresce um tiquinho — o par inteiro "respira" quando você troca.
+    val escala by animateFloatAsState(if (selected) 1f else 0.975f, Motion.bouncy(), label = "tileScale")
+    val press = remember { MutableInteractionSource() }
+
     Column(
         modifier
-            .clip(RoundedCornerShape(16.dp))
+            .graphicsLayer { scaleX = escala; scaleY = escala }
+            .pressBounce(press)
+            .clip(forma)
             .background(bg)
-            .border(if (selected) 1.5.dp else 1.dp, edge, RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
+            .border(if (selected) 1.5.dp else 1.dp, edge, forma)
+            .clickable(interactionSource = press, indication = null, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 11.dp),
         verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) { visual() }
             // A marca de seleção fecha o par: um está ligado, o outro não.
-            Icon(
-                if (selected) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
-                null,
-                Modifier.size(17.dp),
-                tint = if (selected) accent else cs.outline,
-            )
+            AnimatedContent(
+                targetState = selected,
+                transitionSpec = { scaleIn(Motion.bouncy()) + fadeIn() togetherWith scaleOut(Motion.gentle()) + fadeOut() },
+                label = "tileCheck",
+            ) { on ->
+                Icon(
+                    if (on) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
+                    null,
+                    Modifier.size(17.dp),
+                    tint = if (on) accent else cs.outline,
+                )
+            }
         }
         Text(
             title,
@@ -301,9 +338,9 @@ fun CardHeader(icon: ImageVector, tint: Color, title: String, subtitle: String? 
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         // Quadradinho tingido + anel do mesmo tom: área pequena, cor cheia.
         Box(
-            Modifier.size(38.dp).clip(RoundedCornerShape(11.dp))
+            Modifier.size(38.dp).clip(SquircleShape(13.dp))
                 .background(tint.copy(alpha = 0.24f))
-                .border(1.dp, tint.copy(alpha = 0.45f), RoundedCornerShape(11.dp)),
+                .border(1.dp, tint.copy(alpha = 0.45f), SquircleShape(13.dp)),
             contentAlignment = Alignment.Center,
         ) { Icon(icon, null, tint = tint, modifier = Modifier.size(21.dp)) }
         Column {
@@ -313,6 +350,28 @@ fun CardHeader(icon: ImageVector, tint: Color, title: String, subtitle: String? 
             }
         }
     }
+}
+
+/**
+ * Divisor que **some nas pontas**. Uma linha reta de ponta a ponta corta o cartão
+ * em dois; um traço que nasce e morre em transparente apenas separa, sem fatiar —
+ * é a diferença entre uma costura e um vinco.
+ */
+@Composable
+fun SoftDivider(modifier: Modifier = Modifier, accent: Color? = null) {
+    val cor = accent ?: MaterialTheme.colorScheme.outlineVariant
+    Box(
+        modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(
+                Brush.horizontalGradient(
+                    0f to Color.Transparent,
+                    0.5f to cor.copy(alpha = 0.5f),
+                    1f to Color.Transparent,
+                ),
+            ),
+    )
 }
 
 /** Rótulo de seção (sobrancelha): mono, maiúsculo, espaçado — ar de instrumento. */
@@ -355,7 +414,7 @@ fun LedBezel(
 ) {
     Box(
         modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(SquircleShape(24.dp))
             .background(
                 Brush.linearGradient(
                     listOf(Color(0xFF2A2F38), Color(0xFF141821), Color(0xFF1E232C)),
@@ -367,7 +426,7 @@ fun LedBezel(
             Modifier
                 .fillMaxWidth()
                 .height(boardHeight)
-                .clip(RoundedCornerShape(11.dp))
+                .clip(SquircleShape(13.dp))
                 .background(PanelBg),
             contentAlignment = Alignment.Center,
             content = content,
@@ -463,7 +522,7 @@ fun EmptyState(icon: ImageVector, title: String, subtitle: String, modifier: Mod
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
-            Modifier.size(60.dp).clip(RoundedCornerShape(18.dp)).background(cs.surfaceContainerHigh),
+            Modifier.size(60.dp).clip(SquircleShape(21.dp)).background(cs.surfaceContainerHigh),
             contentAlignment = Alignment.Center,
         ) {
             Icon(icon, null, tint = cs.primary, modifier = Modifier.size(30.dp))
